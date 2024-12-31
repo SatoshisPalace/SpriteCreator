@@ -21,14 +21,20 @@ const LayerSelector: React.FC<LayerSelectorProps> = ({
       <select
         value={currentStyle}
         onChange={(e) => onStyleChange(e.target.value)}
-        className={`flex-1 py-1 px-2 text-sm border rounded ${
+        className={`flex-1 py-1 px-2 text-sm border rounded transition-all duration-300 ${
           darkMode 
-            ? 'bg-gray-700 border-gray-600 text-white' 
-            : 'bg-white border-gray-200'
-        }`}
+            ? 'bg-[#814E33]/20 border-[#F4860A]/30 text-[#FCF5D8] focus:border-[#F4860A]/50' 
+            : 'bg-[#FCF5D8]/40 border-[#814E33]/20 text-[#814E33] focus:border-[#814E33]/50'
+        } outline-none hover:border-opacity-50`}
       >
         {availableStyles.map((style) => (
-          <option key={style} value={style}>
+          <option 
+            key={style} 
+            value={style}
+            className={darkMode 
+              ? 'bg-[#814E33] text-[#FCF5D8]' 
+              : 'bg-[#FCF5D8] text-[#814E33]'}
+          >
             {style}
           </option>
         ))}

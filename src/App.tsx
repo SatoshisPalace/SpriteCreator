@@ -79,74 +79,99 @@ function App() {
 
   if (Object.keys(layers).length === 0) {
     return (
-      <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100'} p-8 flex items-center justify-center`}>
-        <div className="text-xl">Loading assets...</div>
+      <div className={`min-h-screen bg-gradient-to-br from-[#FCF5D8] via-[#F4860A]/20 to-[#814E33] p-4 overflow-hidden`}>
+        <div className="text-2xl">Loading assets...</div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'} p-4 overflow-hidden`}>
-      <div className={`max-w-4xl mx-auto ${darkMode ? 'bg-gray-800 text-white' : 'bg-white'} rounded-lg shadow-lg p-4 h-[calc(100vh-2rem)]`}>
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">Sprite Map Creator</h1>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`p-2 rounded-lg ${
-              darkMode 
-                ? 'bg-gray-700 hover:bg-gray-600 text-yellow-300' 
-                : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-            }`}
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[calc(100vh-8rem)] overflow-hidden">
-          <div className="overflow-y-auto pr-2 space-y-2 scrollbar-hide">
-            {Object.entries(layers).map(([layerName, layer]) => (
-              <div 
-                key={layerName} 
-                className={`space-y-1 p-2 border rounded-lg ${
-                  darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200'
-                }`}
-              >
-                <LayerSelector
-                  layerType={layerName}
-                  currentStyle={layer.style}
-                  availableStyles={availableStyles[layerName] || []}
-                  onStyleChange={(style) => handleStyleChange(layerName, style)}
-                  darkMode={darkMode}
-                />
-                <ColorSlider
-                  layerName={layerName}
-                  color={layer.color}
-                  onColorChange={(color) => handleColorChange(layerName, color)}
-                  darkMode={darkMode}
-                />
-              </div>
-            ))}
+    <div className={`h-screen bg-gradient-to-br from-[#FCF5D8] via-[#F4860A]/20 to-[#814E33] p-4 overflow-hidden`}>
+      <div className={`h-full mx-auto backdrop-blur-xl ${darkMode ? 'bg-[#814E33]/20 text-[#FCF5D8]' : 'bg-[#FCF5D8]/30'} rounded-2xl shadow-2xl p-4 border ${darkMode ? 'border-[#F4860A]/30' : 'border-[#814E33]/20'}`}>
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex-1" /> {/* Spacer */}
+          <img src="/assets/rune-realm-transparent.png" alt="Rune Realm Logo" className="h-40 w-auto" />
+          <div className="flex-1 flex justify-end">
             <button
-              onClick={handleReset}
-              className={`w-full py-1.5 px-4 rounded text-sm font-medium ${
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-2 rounded-full backdrop-blur-md transition-all duration-300 ${
                 darkMode 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
-              }`}
+                  ? 'bg-[#F4860A]/30 hover:bg-[#F4860A]/40 text-[#FCF5D8]' 
+                  : 'bg-[#814E33]/20 hover:bg-[#814E33]/30 text-[#F4860A]'
+              } shadow-lg hover:shadow-xl transform hover:scale-105`}
             >
-              Reset All Layers
+              {darkMode ? '☀️' : '🌙'}
             </button>
           </div>
-          
-          <div className="flex flex-col h-full">
-            <div className="flex-1 flex items-center">
-              <PreviewCanvas layers={layers} darkMode={darkMode} />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[calc(100%-11rem)]">
+          <div className="grid grid-cols-1 auto-rows-min gap-2 content-start h-full overflow-hidden">
+            <div className="h-full overflow-y-auto pr-2 space-y-2">
+              {Object.entries(layers).map(([layerName, layer]) => (
+                <div 
+                  key={layerName} 
+                  className={`p-3 rounded-xl backdrop-blur-md transition-all duration-300 hover:shadow-lg ${
+                    darkMode ? 'bg-[#814E33]/20 border-[#F4860A]/30' : 'bg-[#FCF5D8]/40 border-[#814E33]/20'
+                  } border shadow-lg hover:bg-opacity-30`}
+                >
+                  <h3 className={`text-sm font-semibold ${darkMode ? 'text-[#FCF5D8]' : 'text-[#814E33]'} mb-2`}>
+                    {layerName.charAt(0).toUpperCase() + layerName.slice(1)}
+                  </h3>
+                  <div className="space-y-2">
+                    <LayerSelector
+                      layerType={layerName}
+                      currentStyle={layer.style}
+                      availableStyles={availableStyles[layerName] || []}
+                      onStyleChange={(style) => handleStyleChange(layerName, style)}
+                      darkMode={darkMode}
+                    />
+                    <ColorSlider
+                      layerName={layerName}
+                      color={layer.color}
+                      onColorChange={(color) => handleColorChange(layerName, color)}
+                      darkMode={darkMode}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-            <ExportButton 
-              layers={layers} 
-              darkMode={darkMode} 
-              className="mt-4" 
-            />
+          </div>
+          
+          <div className="flex flex-col h-full gap-3">
+            <div className={`flex-1 flex flex-col p-4 rounded-xl backdrop-blur-md ${
+              darkMode ? 'bg-[#814E33]/20' : 'bg-[#FCF5D8]/40'
+            } border ${darkMode ? 'border-[#F4860A]/30' : 'border-[#814E33]/20'} shadow-lg`}>
+              <div className="text-center mb-4">
+                <h1 className={`text-2xl font-bold bg-gradient-to-r ${darkMode ? 'from-[#FCF5D8] to-[#F4860A]' : 'from-[#814E33] to-[#F4860A]'} bg-clip-text text-transparent`}>
+                  Character Designer
+                </h1>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                <PreviewCanvas layers={layers} darkMode={darkMode} />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleReset}
+                className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 ${
+                  darkMode 
+                    ? 'bg-[#F4860A]/30 hover:bg-[#F4860A]/40 text-[#FCF5D8]' 
+                    : 'bg-[#814E33]/20 hover:bg-[#814E33]/30 text-[#814E33]'
+                } backdrop-blur-md shadow-lg hover:shadow-xl border ${darkMode ? 'border-[#F4860A]/30' : 'border-[#814E33]/20'}`}
+              >
+                Reset All Layers
+              </button>
+              <ExportButton 
+                layers={layers} 
+                darkMode={darkMode} 
+                className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 ${
+                  darkMode 
+                    ? 'bg-[#814E33]/30 hover:bg-[#814E33]/40 text-[#FCF5D8]' 
+                    : 'bg-[#F4860A]/20 hover:bg-[#F4860A]/30 text-[#814E33]'
+                } backdrop-blur-md shadow-lg hover:shadow-xl border ${darkMode ? 'border-[#F4860A]/30' : 'border-[#814E33]/20'}`}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -25,10 +25,12 @@ class SpritePreviewScene extends Phaser.Scene {
     right: 'walk-right',
     back: 'walk-up'
   };
+  private darkMode: boolean;
 
-  constructor(layers: PreviewCanvasProps['layers']) {
+  constructor(layers: PreviewCanvasProps['layers'], darkMode: boolean) {
     super({ key: 'SpritePreviewScene' });
     this.layers = layers;
+    this.darkMode = darkMode;
   }
 
   preload() {
@@ -54,10 +56,10 @@ class SpritePreviewScene extends Phaser.Scene {
     const directions: Direction[] = ['forward', 'left', 'right', 'back'];
     const frameRates = { forward: 8, left: 8, right: 8, back: 8 };
     const positions = {
-      forward: { x: 144, y: 270 },
-      left: { x: 144, y: 90 },
-      right: { x: 432, y: 90 },
-      back: { x: 432, y: 270 }
+      forward: { x: 144, y: 340 },
+      left: { x: 144, y: 100 },
+      right: { x: 432, y: 100 },
+      back: { x: 432, y: 340 }
     };
     
     // Define frame sequences for ping-pong style animation
@@ -67,6 +69,61 @@ class SpritePreviewScene extends Phaser.Scene {
       right: [6, 7, 8, 7],
       back: [9, 10, 11, 10]
     };
+
+    // Add glassmorphism frames
+    const frameStyle = {
+      width: 200,
+      height: 200,
+      fillStyle: this.darkMode ? 0x814E33 : 0xFCF5D8,
+      fillAlpha: this.darkMode ? 0.2 : 0.4,
+      strokeStyle: this.darkMode ? 0xF4860A : 0x814E33,
+      strokeAlpha: this.darkMode ? 0.3 : 0.2,
+      radius: 20
+    };
+
+    // Add frames for each position
+    Object.entries(positions).forEach(([direction, pos]) => {
+      // Larger blur background
+      const blurBg = this.add.graphics();
+      blurBg.fillStyle(frameStyle.fillStyle, frameStyle.fillAlpha * 0.4);
+      blurBg.fillRoundedRect(
+        pos.x - frameStyle.width/2 - 10, 
+        pos.y - frameStyle.height/2 - 10,
+        frameStyle.width + 20,
+        frameStyle.height + 20,
+        frameStyle.radius + 8
+      );
+
+      // Medium blur layer
+      const blurMid = this.add.graphics();
+      blurMid.fillStyle(frameStyle.fillStyle, frameStyle.fillAlpha * 0.7);
+      blurMid.fillRoundedRect(
+        pos.x - frameStyle.width/2 - 5, 
+        pos.y - frameStyle.height/2 - 5,
+        frameStyle.width + 10,
+        frameStyle.height + 10,
+        frameStyle.radius + 4
+      );
+
+      // Main frame
+      const frame = this.add.graphics();
+      frame.fillStyle(frameStyle.fillStyle, frameStyle.fillAlpha);
+      frame.lineStyle(2, frameStyle.strokeStyle, frameStyle.strokeAlpha);
+      frame.fillRoundedRect(
+        pos.x - frameStyle.width/2,
+        pos.y - frameStyle.height/2,
+        frameStyle.width,
+        frameStyle.height,
+        frameStyle.radius
+      );
+      frame.strokeRoundedRect(
+        pos.x - frameStyle.width/2,
+        pos.y - frameStyle.height/2,
+        frameStyle.width,
+        frameStyle.height,
+        frameStyle.radius
+      );
+    });
 
     // Initialize sprite containers
     this.sprites['BASE'] = {};
@@ -126,15 +183,16 @@ class SpritePreviewScene extends Phaser.Scene {
       });
     });
 
-    // Add direction labels
-    const labelStyle = { 
-      fontSize: '18px',
-      color: '#666666'
+    // Add direction labels with adjusted positions
+    const labelStyle = {
+      color: this.darkMode ? '#FCF5D8' : '#814E33',
+      fontSize: '14px',
+      fontFamily: 'Arial'
     };
     this.add.text(144, 30, 'Left', labelStyle).setOrigin(0.5);
     this.add.text(432, 30, 'Right', labelStyle).setOrigin(0.5);
-    this.add.text(144, 330, 'Forward', labelStyle).setOrigin(0.5);
-    this.add.text(432, 330, 'Back', labelStyle).setOrigin(0.5);
+    this.add.text(144, 440, 'Forward', labelStyle).setOrigin(0.5);
+    this.add.text(432, 440, 'Back', labelStyle).setOrigin(0.5);
   }
 
   updateColors(newLayers: PreviewCanvasProps['layers']) {
@@ -254,10 +312,10 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
     if (!gameRef.current) {
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        width: 576,  // Increased canvas width further
-        height: 360, // Increased canvas height further
+        width: 576,
+        height: 480,
         parent: 'phaser-container',
-        scene: new SpritePreviewScene(layers),
+        scene: new SpritePreviewScene(layers, darkMode),
         transparent: true,
         pixelArt: true,
         scale: {
@@ -287,13 +345,13 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
   }, [layers, darkMode]);
 
   return (
-    <div className={`relative w-full flex-1 min-h-[360px] flex items-center justify-center ${darkMode ? 'bg-gray-750' : 'bg-gray-50'} rounded-lg`}>
-      <div id="phaser-container" className="w-[576px] h-[360px]" />
+    <div className="relative w-full flex-1 min-h-[480px] flex items-center justify-center rounded-lg">
+      <div id="phaser-container" className="w-[576px] h-[480px]" />
       {isLoading && (
         <div className={`absolute inset-0 flex items-center justify-center ${
-          darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-50 bg-opacity-75'
+          darkMode ? 'bg-gray-800/75' : 'bg-white/75'
         }`}>
-          <div className="text-lg">Loading sprites...</div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500" />
         </div>
       )}
     </div>
