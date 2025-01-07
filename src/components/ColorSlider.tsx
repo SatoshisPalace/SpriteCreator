@@ -119,8 +119,14 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ layerName, color, onColorChan
 
   const currentIndex = findClosestColorIndex(color);
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const index = parseInt(e.target.value);
+  const handleSliderClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = x / rect.width;
+    const index = Math.min(
+      Math.max(Math.floor(percentage * RAINBOW_COLORS.length), 0),
+      RAINBOW_COLORS.length - 1
+    );
     onColorChange(RAINBOW_COLORS[index]);
   };
 
@@ -139,62 +145,42 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ layerName, color, onColorChan
       {/* Left Arrow */}
       <button
         onClick={() => handleArrowClick('left')}
-        className={`w-8 h-8 flex items-center justify-center rounded-full 
+        className={`w-9 h-9 flex items-center justify-center rounded-lg 
           ${darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'} 
           transition-colors duration-200`}
+        style={{ marginTop: '1px' }}
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        <svg className="w-6 h-6" fill="none" stroke="black" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
         </svg>
       </button>
 
       <div className="relative flex-1">
         <style>
           {`
-            .color-slider::-webkit-slider-thumb {
-              -webkit-appearance: none;
-              appearance: none;
-              width: 20px;
-              height: 20px;
-              border-radius: 50%;
-              background: #000000;
-              cursor: pointer;
-              border: 2px solid #ffffff;
-              margin-top: -6px;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            }
-            
-            .color-slider::-moz-range-thumb {
-              width: 20px;
-              height: 20px;
-              border-radius: 50%;
-              background: #000000;
-              cursor: pointer;
-              border: 2px solid #ffffff;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            }
-
-            .color-slider::-webkit-slider-runnable-track {
-              height: 8px;
-              border-radius: 4px;
+            .color-track {
+              height: 16px;
+              border-radius: 8px;
               background: linear-gradient(to right, ${RAINBOW_COLORS.join(', ')});
-            }
-
-            .color-slider::-moz-range-track {
-              height: 8px;
-              border-radius: 4px;
-              background: linear-gradient(to right, ${RAINBOW_COLORS.join(', ')});
+              cursor: pointer;
+              position: relative;
             }
           `}
         </style>
-        <div className="relative">
-          <input
-            type="range"
-            min="0"
-            max={RAINBOW_COLORS.length - 1}
-            value={currentIndex}
-            onChange={handleSliderChange}
-            className="color-slider w-full h-8 appearance-none rounded cursor-pointer"
+        <div className="color-track w-full mt-4 mb-4" onClick={handleSliderClick}>
+          <div 
+            className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{
+              left: `${(currentIndex / (RAINBOW_COLORS.length - 1)) * 100}%`,
+              width: '24px',
+              height: '24px',
+              background: '#000000',
+              border: '2px solid #ffffff',
+              borderRadius: '50%',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              transform: 'translate(-50%, -50%)',
+              transition: 'left 0.2s ease-out'
+            }}
           />
         </div>
       </div>
@@ -202,12 +188,13 @@ const ColorSlider: React.FC<ColorSliderProps> = ({ layerName, color, onColorChan
       {/* Right Arrow */}
       <button
         onClick={() => handleArrowClick('right')}
-        className={`w-8 h-8 flex items-center justify-center rounded-full 
+        className={`w-9 h-9 flex items-center justify-center rounded-lg 
           ${darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'} 
           transition-colors duration-200`}
+        style={{ marginTop: '1px' }}
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        <svg className="w-6 h-6" fill="none" stroke="black" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
         </svg>
       </button>
 

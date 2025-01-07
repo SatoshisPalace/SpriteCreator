@@ -37,6 +37,7 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
   const [error, setError] = useState<string | null>(null);
   const [signer, setSigner] = useState<any>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [currentSkin, setCurrentSkin] = useState(null);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,8 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
   });
   const [isConnected, setIsConnected] = useState(false);
   const [showWarp, setShowWarp] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(false);
 
   const REQUIRED_PERMISSIONS = [
     'ACCESS_ADDRESS',
@@ -57,18 +60,6 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
     'SIGN_TRANSACTION',
     'DISPATCH'
   ];
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Theme constants
   const THEME_COLORS = {
@@ -97,72 +88,85 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
   const currentTheme = darkMode ? THEME_COLORS.dark : THEME_COLORS.light;
 
   useEffect(() => {
-    // Check if wallet is already connected on component mount
-    const checkExistingConnection = async () => {
-      console.log('SpriteCustomizer: Checking existing wallet connection');
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
       try {
-        if (window.arweaveWallet) {
-          const permissions = await window.arweaveWallet.getPermissions();
-          console.log('SpriteCustomizer: Existing permissions:', permissions);
-          
-          if (permissions.includes('ACCESS_ADDRESS')) {
-            console.log('SpriteCustomizer: Wallet already connected, getting address');
-            const address = await window.arweaveWallet.getActiveAddress();
-            console.log('SpriteCustomizer: Got address:', address);
-            
-            const browserSigner = new ArconnectSigner(window.arweaveWallet);
-            setSigner(browserSigner);
-            
-            const status = await checkWalletStatus({ address });
-            console.log('SpriteCustomizer: Got wallet status:', status);
-            
-            if (!status.error) {
-              setIsUnlocked(status.isUnlocked);
-              setContractIcon(status.contractIcon);
-              setContractName(status.contractName);
+        console.log('SpriteCustomizer: Checking existing wallet connection');
+        setLoading(true);
+        const browserSigner = await arweaveWallet();
+        if (browserSigner) {
+          console.log('SpriteCustomizer: Wallet connected');
+          setSigner(browserSigner);
+          const status = await checkWalletStatus();
+          setIsUnlocked(status.isUnlocked);
+          setContractIcon(status.contractIcon);
+          setContractName(status.contractName);
+          if (status.currentSkin) {
+            console.log('SpriteCustomizer: Current skin found:', status.currentSkin);
+            setCurrentSkin(status.currentSkin);
+            // If we have a valid skin, enter immediately
+            if (status.currentSkin !== "none") {
+              setShowPreview(true);
+              setShowCustomizer(true);
+              setShowWarp(true);
             }
           }
+          setIsConnected(true);
+        } else {
+          console.log('SpriteCustomizer: No wallet connected');
         }
       } catch (error) {
-        console.error('SpriteCustomizer: Error checking existing connection:', error);
+        console.log('SpriteCustomizer: Connection error:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    checkExistingConnection();
+    init();
     initializeLayers();
   }, []);
 
   useEffect(() => {
-    const initializeWithWallet = async () => {
-      if (wallet && window.arweaveWallet) {
-        console.log('Initializing with provided wallet:', wallet);
+    if (wallet && !isConnected) {
+      const initializeWithWallet = async () => {
         try {
-          // Create ArConnect signer instance
-          await window.arweaveWallet.connect(REQUIRED_PERMISSIONS);
-          const browserSigner = new ArconnectSigner(window.arweaveWallet);
-          console.log('Created browser signer for wallet');
-          
-          setSigner(browserSigner);
-          setIsConnected(true);
-          
-          // Check unlock status with the provided wallet
-          const status = await checkWalletStatus({ address: wallet });
-          console.log('Initial wallet status:', status);
-          if (!status.error) {
+          const addr = await wallet.getActiveAddress();
+          if (addr) {
+            setIsConnected(true);
+            const browserSigner = new ArconnectSigner(wallet);
+            setSigner(browserSigner);
+            const status = await checkWalletStatus();
             setIsUnlocked(status.isUnlocked);
             setContractIcon(status.contractIcon);
             setContractName(status.contractName);
+            if (status.currentSkin) {
+              setCurrentSkin(status.currentSkin);
+              if (status.currentSkin !== "none") {
+                setShowPreview(true);
+                setShowCustomizer(true);
+                setShowWarp(true);
+              }
+            }
           }
         } catch (error) {
           console.error('Error initializing with wallet:', error);
-          setSigner(null);
-          setIsConnected(false);
         }
-      }
-    };
+      };
 
-    initializeWithWallet();
-  }, [wallet]);
+      initializeWithWallet();
+    }
+  }, [wallet, isConnected]);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -175,6 +179,14 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
             setSigner(browserSigner);
             const status = await checkWalletStatus();
             setIsUnlocked(status.isUnlocked);
+            if (status.currentSkin) {
+              setCurrentSkin(status.currentSkin);
+              if (status.currentSkin !== "none") {
+                setShowPreview(true);
+                setShowCustomizer(true);
+                setShowWarp(true);
+              }
+            }
           }
         } catch (error) {
           console.log('Not connected:', error);
@@ -223,7 +235,7 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
       if (!window.arweaveWallet) {
         throw new Error('Please install ArConnect extension');
       }
-      //await window.arweaveWallet.connect(REQUIRED_PERMISSIONS);
+      await window.arweaveWallet.connect(REQUIRED_PERMISSIONS);
       const address = await window.arweaveWallet.getActiveAddress();
       const browserSigner = new ArconnectSigner(window.arweaveWallet);
       
@@ -277,6 +289,140 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
     } catch (error) {
       console.error('SpriteCustomizer: Purchase error:', error);
       throw error;
+    }
+  };
+
+  const handleUpload = async () => {
+    console.log('SpriteCustomizer: Upload button clicked');
+    console.log('Current state:', { signer, isUnlocked });
+
+    if (!signer) {
+      setUploadStatus('Please connect your wallet first');
+      return;
+    }
+
+    if (!isUnlocked) {
+      setIsPurchaseModalOpen(true);
+      return;
+    }
+
+    console.log('SpriteCustomizer: Ready to upload');
+    try {
+      setUploadStatus('Creating sprite...');
+      
+      // Create a canvas and draw the sprite
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      canvas.width = 576; // 12 frames * 48 pixels
+      canvas.height = 60; // Single row height
+
+      // Draw base image
+      console.log('Drawing base image...');
+      const baseImg = new Image();
+      baseImg.src = '/assets/BASE.png';
+      await new Promise((resolve, reject) => {
+        baseImg.onload = resolve;
+        baseImg.onerror = reject;
+      });
+      ctx.drawImage(baseImg, 0, 0, baseImg.width, 60, 0, 0, 576, 60);
+
+      // Process each layer
+      for (const [layerName, layerData] of Object.entries(layers)) {
+        console.log(`Processing layer ${layerName}...`);
+        const img = new Image();
+        img.src = `/assets/${layerName}/${layerData.style}.png`;
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = 576;  // Fixed width
+        tempCanvas.height = 60;  // Fixed height
+        const tempCtx = tempCanvas.getContext('2d')!;
+
+        // Draw only the first row, scaling to target size
+        tempCtx.drawImage(img, 
+          0, 0,           // Source x, y
+          img.width, 60,  // Source width, height (only first row)
+          0, 0,           // Destination x, y
+          576, 60         // Destination width, height (fixed size)
+        );
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        
+        // Colorize the layer
+        const r = parseInt(layerData.color.slice(1, 3), 16);
+        const g = parseInt(layerData.color.slice(3, 5), 16);
+        const b = parseInt(layerData.color.slice(5, 7), 16);
+
+        for (let i = 0; i < imageData.data.length; i += 4) {
+          if (imageData.data[i + 3] > 0) {
+            const luminance = (imageData.data[i] * 0.299 +
+              imageData.data[i + 1] * 0.587 +
+              imageData.data[i + 2] * 0.114) / 255;
+
+            imageData.data[i] = r * luminance;
+            imageData.data[i + 1] = g * luminance;
+            imageData.data[i + 2] = b * luminance;
+          }
+        }
+
+        tempCtx.putImageData(imageData, 0, 0);
+        ctx.drawImage(tempCanvas, 0, 0);
+      }
+
+      // Convert to blob
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        }, 'image/png');
+      });
+
+      console.log('Created sprite blob, size:', blob.size);
+
+      // Upload to Arweave
+      console.log('Initializing TurboClient...');
+      const turboClient = TurboFactory.authenticated({ signer });
+      
+      console.log('Starting file upload...');
+      const { id } = await turboClient.uploadFile({
+        fileStreamFactory: () => blob.stream(),
+        fileSizeFactory: () => blob.size,
+        dataItemOpts: {
+          tags: [
+            {
+              name: "Content-Type",
+              value: "image/png",
+            },
+          ],
+        },
+      });
+      console.log('Upload successful! TxId:', id);
+
+      // Send message to update sprite handler
+      console.log('Sending sprite update message...');
+      await message({
+        process: AdminSkinChanger,
+        tags: [
+          { name: "Action", value: "UpdateSprite" },
+          { name: "TxId", value: id }
+        ],
+        signer: createDataItemSigner(window.arweaveWallet),
+        data: ""
+      });
+      console.log('Sprite update message sent successfully');
+
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 5000);
+      
+      return id;
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadStatus('Upload failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -335,146 +481,6 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
     loadAssets();
   }, [availableStyles]);
 
-  const handleUpload = async () => {
-    try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
-      canvas.width = 576; // 12 frames * 48 pixels
-      canvas.height = 60; // Single row height
-
-      // Draw base image
-      console.log('Drawing base image...');
-      const baseImg = new Image();
-      baseImg.crossOrigin = "anonymous";  
-      const basePath = new URL('./assets/BASE.png', import.meta.url).href;
-      console.log('Loading base image from:', basePath);
-      baseImg.src = basePath;
-      
-      await new Promise((resolve, reject) => {
-        baseImg.onload = resolve;
-        baseImg.onerror = (e) => {
-          console.error('Error loading base image:', e);
-          reject(new Error('Failed to load base image'));
-        };
-      });
-      
-      ctx.drawImage(baseImg, 0, 0, baseImg.width, 60, 0, 0, 576, 60);
-
-      // Process each layer
-      for (const [layerName, layerData] of Object.entries(layers)) {
-        if (layerData.style === 'None') continue;  
-        
-        console.log(`Processing layer ${layerName}...`);
-        const img = new Image();
-        img.crossOrigin = "anonymous";  
-        const layerPath = new URL(`./assets/${layerName}/${layerData.style}.png`, import.meta.url).href;
-        console.log('Loading layer image from:', layerPath);
-        img.src = layerPath;
-        
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = (e) => {
-            console.error(`Error loading ${layerName} image:`, e);
-            reject(new Error(`Failed to load ${layerName} image`));
-          };
-        });
-
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = 576;  
-        tempCanvas.height = 60;  
-        const tempCtx = tempCanvas.getContext('2d')!;
-
-        try {
-          // Draw only the first row, scaling to target size
-          tempCtx.drawImage(img, 
-            0, 0,           // Source x, y
-            img.width, 60,  // Source width, height (only first row)
-            0, 0,           // Destination x, y
-            576, 60         // Destination width, height (fixed size)
-          );
-          
-          const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-          
-          // Colorize the layer
-          const r = parseInt(layerData.color.slice(1, 3), 16);
-          const g = parseInt(layerData.color.slice(3, 5), 16);
-          const b = parseInt(layerData.color.slice(5, 7), 16);
-
-          for (let i = 0; i < imageData.data.length; i += 4) {
-            if (imageData.data[i + 3] > 0) {
-              const luminance = (imageData.data[i] * 0.299 +
-                imageData.data[i + 1] * 0.587 +
-                imageData.data[i + 2] * 0.114) / 255;
-
-              imageData.data[i] = r * luminance;
-              imageData.data[i + 1] = g * luminance;
-              imageData.data[i + 2] = b * luminance;
-            }
-          }
-
-          tempCtx.putImageData(imageData, 0, 0);
-          ctx.drawImage(tempCanvas, 0, 0);
-        } catch (e) {
-          console.error(`Error processing ${layerName}:`, e);
-          throw new Error(`Failed to process ${layerName} layer`);
-        }
-      }
-      
-      // Convert to blob
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to create blob'));
-          }
-        }, 'image/png');
-      });
-
-      console.log('Created sprite blob, size:', blob.size);
-
-      // Upload to Arweave
-      console.log('Initializing TurboClient...');
-      const turboClient = TurboFactory.authenticated({ signer });
-      
-      console.log('Starting file upload...');
-      const { id } = await turboClient.uploadFile({
-        fileStreamFactory: () => blob.stream(),
-        fileSizeFactory: () => blob.size,
-        dataItemOpts: {
-          tags: [
-            {
-              name: "Content-Type",
-              value: "image/png",
-            },
-          ],
-        },
-      });
-      console.log('Upload successful! TxId:', id);
-
-      // Send message to update sprite handler
-      console.log('Sending sprite update message...');
-      await message({
-        process: AdminSkinChanger,
-        tags: [
-          { name: "Action", value: "UpdateSprite" },
-          { name: "TxId", value: id }
-        ],
-        signer: createDataItemSigner(window.arweaveWallet),
-        data: ""
-      });
-      console.log('Sprite update message sent successfully');
-
-      setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 5000);
-      
-      return id;
-    } catch (error) {
-      console.error('Upload error:', error);
-      setUploadStatus('Upload failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    }
-  };
-  
   const handleUnlockClick = () => {
     if (!signer) {
       connectWallet();
@@ -515,26 +521,17 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
         </div>
       )}
 
-      <div className={`h-[calc(100%-3rem)] w-full max-w-7xl mx-auto backdrop-blur-xl ${currentTheme.container} ${currentTheme.text} rounded-2xl shadow-2xl border ${currentTheme.border} flex flex-col relative mb-12`}>
+      <div className={`h-[calc(100%-3rem)] w-full max-w-7xl mx-auto backdrop-blur-xl ${currentTheme.container} ${currentTheme.text} rounded-2xl shadow-2xl p-2 sm:p-4 border ${currentTheme.border} flex flex-col relative mb-12`}>
         {/* Header */}
-        <div className="relative h-48">
-          {/* Theme toggle button - positioned absolute in top left */}
+        <div className="flex justify-between items-center mb-2 flex-shrink-0">
           <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`absolute top-4 left-4 p-3 text-2xl rounded-lg transition-colors ${currentTheme.buttonBg} ${currentTheme.buttonHover}`}
+            onClick={handleDarkModeToggle}
+            className={`px-3 py-1 sm:px-4 sm:py-2 rounded-lg ${currentTheme.buttonBg} ${currentTheme.text} border ${currentTheme.border} transition-colors duration-200`}
           >
-            {darkMode ? '🌞' : '🌙'}
+            {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
           </button>
-          
-          {/* Centered logo */}
-          <div className="w-full h-full flex justify-center items-center">
-            <img
-              src={logoPath}
-              alt="Rune Realm"
-              style={{ height: '200px', maxWidth: 'none' }}
-              className="w-auto object-contain"
-            />
-          </div>
+          <img src={logoPath} alt="Rune Realm Logo" className="h-16 sm:h-28 w-auto mx-4" />
+          <div className="w-[100px]" /> {/* Spacer to maintain header layout */}
         </div>
 
         {/* Main Content */}
@@ -621,20 +618,20 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
             Random Layers
           </button>
           <ExportAndUploadButton
-layers={layers}
-darkMode={darkMode}
-signer={signer}
-wallet={wallet}
-isUnlocked={isUnlocked}
-onUploadClick={handleUpload}
-onNeedUnlock={() => setIsPurchaseModalOpen(true)}
-onConnect={connectWallet}
-onUploadComplete={() => {
-  setUploadStatus('Upload complete!');
-  if (onEnter) onEnter();
-}}
-onUploadStatusChange={setUploadStatus}
-onError={setError}
+            id="export-upload-button"
+            layers={layers} 
+            darkMode={darkMode} 
+            mode="arweave"
+            signer={signer}
+            isUnlocked={isUnlocked}
+            onUploadStatusChange={setUploadStatus}
+            onError={setError}
+            onConnect={connectWallet}
+            onNeedUnlock={() => setIsPurchaseModalOpen(true)}
+            onUploadComplete={handleExportComplete}
+            className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 
+              ${currentTheme.buttonBg} ${currentTheme.buttonHover} ${currentTheme.text} 
+              backdrop-blur-md shadow-lg hover:shadow-xl border ${currentTheme.border}`}
           />
         </div>
 
@@ -658,16 +655,13 @@ onError={setError}
           >
             <img src={new URL('./assets/ARIO.png', import.meta.url).href} alt="ARIO.pn" className="h-12" />
           </a>
-          <span className="text-base text-white/70 font-semibold">ON</span>
           <a 
             href="https://game.ar.io" 
             target="_blank" 
             rel="noopener noreferrer"
             className="transition-transform hover:scale-105"
           >
-            <div className="bg-white rounded-full p-1 flex items-center justify-center w-[44px] h-[44px]">
-              <img src={new URL('./assets/arcao.ico', import.meta.url).href} alt="arcao" className="h-11 w-11" />
-            </div>
+            <img src={new URL('./assets/arcao.ico', import.meta.url).href} alt="arcao" className="h-12" />
           </a>
         </div>
       </div>

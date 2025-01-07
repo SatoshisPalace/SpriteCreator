@@ -13,7 +13,7 @@ BaseSpriteAtlas = 'bffb80a0-448d-4523-b9c9-c01f1e6a3533'
 PurchaseTokens = {
   {
     token = 'wOrb8b_V8QixWyXZub48Ki5B6OIDyf_p1ngoonsaRpQ',  -- TRUNK token
-    amount = "1984",
+    amount = "1",
     name = "TRUNK",
     icon="hqg-Em9DdYHYmMysyVi8LuTGF8IF_F7ZacgjYiSpj0k",
     denomination = 3  
@@ -27,7 +27,7 @@ PurchaseTokens = {
   },
   {
     token = 'OsK9Vgjxo0ypX_HLz2iJJuh4hp3I80yA9KArsJjIloU',
-    amount = "5000000000",
+    amount = "1000000000",
     name = "NAB" ,
     icon="LQ4crOHN9qO6JsLNs253AaTch6MgAMbM8PKqBxs4hgI",
     denomination = 8 
@@ -221,6 +221,25 @@ Handlers.add(
     ao.send({
       Target = msg.From,
       Data = json.encode(result)
+    })
+  end
+)
+
+-- Handle CheckUnlocked action
+Handlers.add(
+  "CheckSkin",
+  Handlers.utils.hasMatchingTag("Action", "CheckSkin"),
+  function(msg)
+    local address = ao.id
+    if msg.Tags.Address then
+      address = msg.Tags.Address
+    end
+    
+    local result = UserSkins[address].txId or "None"
+    
+    ao.send({
+      Target = msg.From,
+      Data = result
     })
   end
 )

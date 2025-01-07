@@ -60,8 +60,18 @@ export const checkWalletStatus = async (walletInfo?: { address: string }): Promi
             ],
             data: ""
         });
+        // Check if user is unlocked
+        const result2 = await dryrun({
+            process: AdminSkinChanger,
+            tags: [
+                { name: "Action", value: "CheckSkin" },
+                { name: "Address", value: address }
+            ],
+            data: ""
+        });
 
         console.log("CheckUnlocked response:", result);
+        console.log("CheckSkin response:", result2);
 
         if (!result.Messages || result.Messages.length === 0) {
             throw new Error("No response from CheckUnlocked");
@@ -77,9 +87,19 @@ export const checkWalletStatus = async (walletInfo?: { address: string }): Promi
             
         console.log("Final unlock status:", isUnlocked);
 
+        let skinTxId = null;
+        if (result2.Messages && result2.Messages.length > 0) {
+            const skinResponse = result2.Messages[0].Data;
+            console.log("Skin response:", skinResponse);
+            skinTxId = skinResponse == "None" ? 
+                null : 
+                skinResponse;
+        }
+
+        console.log("Current skin:", skinTxId);
         return {
             isUnlocked,
-            currentSkin: null,
+            currentSkin: skinTxId,
             contractIcon: "hqg-Em9DdYHYmMysyVi8LuTGF8IF_F7ZacgjYiSpj0k",
             contractName: "Sprite Customizer"
         };

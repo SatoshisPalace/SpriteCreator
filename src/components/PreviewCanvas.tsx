@@ -26,6 +26,7 @@ class SpritePreviewScene extends Phaser.Scene {
     back: 'walk-up'
   };
   private darkMode: boolean;
+  setIsLoading: (isLoading: boolean) => void;
 
   constructor(layers: PreviewCanvasProps['layers'], darkMode: boolean) {
     super({ key: 'SpritePreviewScene' });
@@ -41,17 +42,24 @@ class SpritePreviewScene extends Phaser.Scene {
       frameHeight: 60
     };
 
-    // Load base sprite
-    import('../assets/BASE.png').then(baseSprite => {
-      this.load.spritesheet('BASE', baseSprite.default, spritesheetConfig);
-    });
+    // Load base sprite synchronously like WalkingPreview
+    this.load.spritesheet('BASE', new URL('../assets/BASE.png', import.meta.url).href, spritesheetConfig);
 
-    // Load all layer variations
+    // Load all layer variations synchronously
     Object.entries(this.layers).forEach(([layerName, layer]) => {
-      // Using dynamic import with import.meta.glob
       const assetPath = new URL(`../assets/${layerName}/${layer.style}.png`, import.meta.url).href;
       console.log(`Loading asset: ${assetPath}`);
       this.load.spritesheet(`${layerName}.${layer.style}`, assetPath, spritesheetConfig);
+    });
+
+    // Add loading event listeners
+    this.load.on('complete', () => {
+      console.log('All assets loaded successfully');
+      this.setIsLoading(false);
+    });
+
+    this.load.on('loaderror', (file: any) => {
+      console.error('Error loading asset:', file.src);
     });
   }
 
@@ -290,19 +298,19 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
         width: 576,
         height: 480,
         parent: 'phaser-container',
-        scene: new SpritePreviewScene(layers, darkMode),
+        scene: class extends SpritePreviewScene {
+          constructor() {
+            super(layers, darkMode);
+            this.setIsLoading = setIsLoading;
+          }
+        },
         transparent: true,
         pixelArt: true,
         scale: {
           mode: Phaser.Scale.FIT,
           autoCenter: Phaser.Scale.CENTER_BOTH
         },
-        backgroundColor: 'rgba(0, 0, 0, 0)',
-        callbacks: {
-          postBoot: () => {
-            setIsLoading(false);
-          }
-        }
+        backgroundColor: 'rgba(0, 0, 0, 0)'
       };
 
       gameRef.current = new Phaser.Game(config);

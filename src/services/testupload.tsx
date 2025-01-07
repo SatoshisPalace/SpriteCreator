@@ -17,7 +17,6 @@ interface ExportAndUploadButtonProps {
   mode?: 'download' | 'arweave';
   signer?: any;
   isUnlocked?: boolean;
-  wallet?: string;
   onUploadClick?: () => Promise<void>;
   onNeedUnlock?: () => void;
   onConnect?: () => void;
@@ -33,7 +32,6 @@ const ExportAndUploadButton: React.FC<ExportAndUploadButtonProps> = ({
   mode = 'download',
   signer,
   isUnlocked: propIsUnlocked,
-  wallet,
   onUploadClick,
   onNeedUnlock,
   onConnect,
@@ -42,62 +40,40 @@ const ExportAndUploadButton: React.FC<ExportAndUploadButtonProps> = ({
   onError
 }) => {
   const [uploading, setUploading] = useState(false);
-  const [isConnected, setIsConnected] = useState(!!wallet);
+  const [isConnected, setIsConnected] = useState(false);
   const [localIsUnlocked, setLocalIsUnlocked] = useState(false);
-
-  // Use either prop value or local state, preferring prop if available
-  const isUnlocked = propIsUnlocked ?? localIsUnlocked;
 
   const checkStatus = async () => {
     try {
-      if (!window.arweaveWallet && !wallet) {
+      if (!window.arweaveWallet) {
         setIsConnected(false);
         setLocalIsUnlocked(false);
         return;
       }
 
-      const status = await checkWalletStatus();
-      setLocalIsUnlocked(status.isUnlocked);
-      setIsConnected(status.isConnected || !!wallet);
-    } catch (error) {
-      console.error('Error checking wallet status:', error);
-      setLocalIsUnlocked(false);
-      setIsConnected(false);
-    }
-  };
+      const permissions = await window.arweaveWallet.getPermissions();
+      const connected = permissions.includes('ACCESS_PUBLIC_KEY');
+      setIsConnected(connected);
 
-  useEffect(() => {
-    if (wallet) {
-      setIsConnected(true);
-      checkStatus();
-    }
-  }, [wallet]);
-
-  const handleConnect = async () => {
-    if (wallet) {
-      setIsConnected(true);
-      onConnect?.();
-      return;
-    }
-
-    try {
-      // Get current permissions first
-      const currentPermissions = await window.arweaveWallet.getPermissions();
-      const missingPermissions = REQUIRED_PERMISSIONS.filter(p => !currentPermissions.includes(p));
-      
-      if (missingPermissions.length > 0) {
-        console.log('Requesting only missing permissions:', missingPermissions);
-        await window.arweaveWallet.connect(missingPermissions);
+      if (connected) {
+        // Get wallet status
+        const status = await checkWalletStatus();
+        setLocalIsUnlocked(status.isUnlocked);
       }
-      
-      console.log('Permissions granted');
-      setIsConnected(true);
-      onConnect?.();
     } catch (error) {
-      console.error('Error connecting wallet:', error);
-      onError?.('Failed to connect wallet');
+      console.error('Error checking status:', error);
+      setIsConnected(false);
+      setLocalIsUnlocked(false);
     }
   };
+
+  // Check status when component mounts and when dependencies change
+  useEffect(() => {
+    checkStatus();
+  }, [signer, propIsUnlocked]);
+
+  // Use either prop value or local state, preferring prop if available
+  const isUnlocked = propIsUnlocked ?? localIsUnlocked;
 
   const createColorizedTexture = useCallback((imageData: ImageData, color: string): ImageData => {
     return SpriteColorizer.colorizeTexture(imageData, color, {
@@ -112,15 +88,13 @@ const ExportAndUploadButton: React.FC<ExportAndUploadButtonProps> = ({
     }
 
     try {
-      // Get current permissions first
-      const currentPermissions = await window.arweaveWallet.getPermissions();
-      const missingPermissions = REQUIRED_PERMISSIONS.filter(p => !currentPermissions.includes(p));
-      
-      if (missingPermissions.length > 0) {
-        console.log('Requesting only missing permissions:', missingPermissions);
-        await window.arweaveWallet.connect(missingPermissions);
-      }
-      
+      await window.arweaveWallet.connect([
+        'ACCESS_ADDRESS',
+        'ACCESS_PUBLIC_KEY',
+        'SIGN_TRANSACTION',
+        'SIGNATURE',
+        'DISPATCH'
+      ]);
       console.log('Permissions granted');
       setIsConnected(true);
       await checkStatus(); // Recheck connection after permissions granted
@@ -294,18 +268,7 @@ const ExportAndUploadButton: React.FC<ExportAndUploadButtonProps> = ({
 
   const handleClick = async () => {
     try {
-      if (!signer && !wallet) {
-        if (onConnect) {
-          onConnect();
-        }
-        return;
-      }
-
-      if (!isConnected) {
-        await handleConnect();
-      }
-
-      if (!isConnected) {
+      if (!signer) {
         if (onConnect) {
           onConnect();
         }
@@ -324,14 +287,14 @@ const ExportAndUploadButton: React.FC<ExportAndUploadButtonProps> = ({
         onUploadStatusChange('Starting upload...');
       }
 
-      // Check for missing permissions only if we don't have a wallet prop
-      if (!wallet && window.arweaveWallet) {
-        const currentPermissions = await window.arweaveWallet.getPermissions();
-        const missingPermissions = REQUIRED_PERMISSIONS.filter(p => !currentPermissions.includes(p));
+      // Ensure we have all required ArConnect permissions
+      if (window.arweaveWallet) {
+        const permissions = await window.arweaveWallet.getPermissions();
+        const missingPermissions = REQUIRED_PERMISSIONS.filter(p => !permissions.includes(p));
         
         if (missingPermissions.length > 0) {
-          console.log('Requesting only missing permissions:', missingPermissions);
-          await window.arweaveWallet.connect(missingPermissions);
+          console.log('Requesting missing permissions:', missingPermissions);
+          await window.arweaveWallet.connect(REQUIRED_PERMISSIONS);
         }
       }
 
@@ -355,15 +318,13 @@ const ExportAndUploadButton: React.FC<ExportAndUploadButtonProps> = ({
 
   const buttonText = useMemo(() => {
     if (uploading) return 'Uploading...';
-    if (!signer && !wallet) return 'Connect Wallet';
-    if (!isConnected) return 'Connect Wallet';
+    if (!signer) return 'Connect Wallet';
     if (!isUnlocked) return 'Unlock Access';
     return 'Upload Sprite';
-  }, [uploading, signer, wallet, isConnected, isUnlocked]);
+  }, [uploading, signer, isUnlocked]);
 
   const getButtonTitle = () => {
-    if (!signer && !wallet) return 'Click to connect your wallet';
-    if (!isConnected) return 'Click to connect your wallet';
+    if (!signer) return 'Click to connect your wallet';
     if (!isUnlocked) return 'Click to unlock sprite customization';
     return 'Click to upload your sprite';
   };
