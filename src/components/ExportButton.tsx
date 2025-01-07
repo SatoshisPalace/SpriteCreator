@@ -1,4 +1,6 @@
 import { useCallback } from 'react';
+import { message, createDataItemSigner } from '../config/aoConnection';
+import { AdminSkinChanger, DefaultAtlasTxID } from '../constants/spriteAssets';
 
 interface ExportButtonProps {
   layers: {
@@ -9,9 +11,19 @@ interface ExportButtonProps {
   };
   darkMode?: boolean;
   className?: string;
+  onExport?: (imageData: string) => Promise<void>;
+  mode?: 'download' | 'arweave';
+  buttonText?: string;
 }
 
-const ExportButton: React.FC<ExportButtonProps> = ({ layers, darkMode, className }) => {
+const ExportButton: React.FC<ExportButtonProps> = ({ 
+  layers, 
+  darkMode, 
+  className, 
+  onExport,
+  mode = 'download',
+  buttonText
+}) => {
   const createColorizedTexture = useCallback((imageData: ImageData, color: string): ImageData => {
     const newImageData = new ImageData(
       new Uint8ClampedArray(imageData.data),
@@ -43,6 +55,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({ layers, darkMode, className
 
   const handleExport = async () => {
     try {
+      console.log('Starting export process...');
       // Create a canvas for the final sprite map
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d')!;
@@ -50,16 +63,25 @@ const ExportButton: React.FC<ExportButtonProps> = ({ layers, darkMode, className
       // Set canvas size to match sprite sheet
       canvas.width = 576; // 12 frames * 48 pixels
       canvas.height = 180; // 3 rows * 60 pixels
+      console.log('Canvas created with dimensions:', canvas.width, 'x', canvas.height);
 
       // Load and process each layer
       const processLayer = async (layerName: string, layerData: { style: string, color: string }) => {
+        console.log(`Processing layer: ${layerName}, style: ${layerData.style}, color: ${layerData.color}`);
         // Load the sprite sheet image
+        const assetUrl = new URL(`../assets/${layerName}/${layerData.style}.png`, import.meta.url).href;
         const img = new Image();
-        img.src = `/assets/${layerName}/${layerData.style}.png`;
+        img.src = assetUrl;
         
         await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
+          img.onload = () => {
+            console.log(`Loaded image for ${layerName}: ${img.width}x${img.height}`);
+            resolve(null);
+          };
+          img.onerror = (err) => {
+            console.error(`Failed to load image for ${layerName}:`, err);
+            reject(err);
+          };
         });
 
         // Create a temporary canvas for color processing
@@ -70,54 +92,97 @@ const ExportButton: React.FC<ExportButtonProps> = ({ layers, darkMode, className
         
         // Draw the original image
         tempCtx.drawImage(img, 0, 0);
+        console.log(`Drew ${layerName} to temp canvas`);
         
         // Get image data and apply color
         const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        console.log(`Got image data for ${layerName}: ${imageData.width}x${imageData.height}`);
         const colorizedData = createColorizedTexture(imageData, layerData.color);
         
         // Put the colorized data back
         tempCtx.putImageData(colorizedData, 0, 0);
+        console.log(`Applied color to ${layerName}`);
         
         // Draw the processed layer onto the main canvas
         ctx.drawImage(tempCanvas, 0, 0);
+        console.log(`Drew ${layerName} to main canvas`);
       };
 
       // Process BASE layer first
+      console.log('Loading BASE layer...');
+      const baseUrl = new URL('../assets/BASE.png', import.meta.url).href;
       const baseImg = new Image();
-      baseImg.src = '/assets/BASE.png';
+      baseImg.src = baseUrl;
       await new Promise((resolve) => {
-        baseImg.onload = resolve;
+        baseImg.onload = () => {
+          console.log('BASE layer loaded:', baseImg.width, 'x', baseImg.height);
+          resolve(null);
+        };
       });
       ctx.drawImage(baseImg, 0, 0);
+      console.log('Drew BASE layer');
 
       // Process all other layers in order
+      console.log('Processing additional layers...');
       for (const [layerName, layerData] of Object.entries(layers)) {
         await processLayer(layerName, layerData);
       }
 
-      // Create download link
-      const link = document.createElement('a');
-      link.download = 'sprite-map.png';
-      link.href = canvas.toDataURL('image/png');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Get the image data as base64
+      console.log('Converting to base64...');
+      const imageData = canvas.toDataURL('image/png');
+      console.log('Base64 length:', imageData.length);
+      console.log('First 100 chars of base64:', imageData.substring(0, 100));
+
+      if (mode === 'arweave' && onExport) {
+        console.log('Uploading to Arweave...');
+        const id = await onExport(imageData);
+        console.log('Upload handler completed with ID:', id);
+
+        // Send message to update sprite handler
+        if (window.arweaveWallet) {
+          console.log('Sending sprite update message...');
+          await message({
+            process: AdminSkinChanger,
+            tags: [
+              { name: "Action", value: "UpdateSprite" },
+              { name: "SpriteTxId", value: id },
+              { name: "SpriteAtlasTxId", value: DefaultAtlasTxID }
+            ],
+            signer: createDataItemSigner(window.arweaveWallet),
+            data: ""
+          });
+        }
+      } else {
+        console.log('Downloading locally...');
+        // Create download link
+        const link = document.createElement('a');
+        link.download = 'sprite-map.png';
+        link.href = imageData;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        console.log('Local download completed');
+      }
     } catch (error) {
-      console.error('Error exporting sprite map:', error);
-      alert('Failed to export sprite map. Please try again.');
+      console.error('Error during export:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+        console.error('Error stack:', error.stack);
+      }
     }
   };
 
   return (
     <button
       onClick={handleExport}
-      className={`py-2 px-4 rounded font-medium ${
+      className={className || `py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 ${
         darkMode 
-          ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-          : 'bg-blue-500 hover:bg-blue-600 text-white'
-      } ${className || ''}`}
+          ? 'bg-[#814E33]/30 hover:bg-[#814E33]/40 text-[#FCF5D8]' 
+          : 'bg-[#814E33]/20 hover:bg-[#814E33]/30 text-[#814E33]'
+      } backdrop-blur-md shadow-lg hover:shadow-xl border ${darkMode ? 'border-[#F4860A]/30' : 'border-[#814E33]/20'}`}
     >
-      Export Sprite Map
+      {buttonText || (mode === 'arweave' ? 'Upload to Arweave' : 'Export Sprite')}
     </button>
   );
 };

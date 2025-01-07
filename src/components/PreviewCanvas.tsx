@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { hexToRgb, matchesGreyShade, calculateColorShade, getGreyLevel } from '../utils/colorMapping';
+import { SpriteColorizer } from '../utils/spriteColorizer';
 
 interface PreviewCanvasProps {
   layers: {
@@ -18,7 +19,6 @@ class SpritePreviewScene extends Phaser.Scene {
   private sprites: { [key: string]: { [direction in Direction]: Phaser.GameObjects.Sprite } } = {};
   private textures: { [key: string]: HTMLCanvasElement } = {};
   private layers: PreviewCanvasProps['layers'];
-  private colorCache: { [key: string]: ImageData } = {};
   private animationPrefix: { [key in Direction]: string } = {
     forward: 'walk-down',
     left: 'walk-left',
@@ -42,11 +42,14 @@ class SpritePreviewScene extends Phaser.Scene {
     };
 
     // Load base sprite
-    this.load.spritesheet('BASE', '/assets/BASE.png', spritesheetConfig);
+    import('../assets/BASE.png').then(baseSprite => {
+      this.load.spritesheet('BASE', baseSprite.default, spritesheetConfig);
+    });
 
     // Load all layer variations
     Object.entries(this.layers).forEach(([layerName, layer]) => {
-      const assetPath = `/assets/${layerName}/${layer.style}.png`;
+      // Using dynamic import with import.meta.glob
+      const assetPath = new URL(`../assets/${layerName}/${layer.style}.png`, import.meta.url).href;
       console.log(`Loading asset: ${assetPath}`);
       this.load.spritesheet(`${layerName}.${layer.style}`, assetPath, spritesheetConfig);
     });
@@ -74,10 +77,10 @@ class SpritePreviewScene extends Phaser.Scene {
     const frameStyle = {
       width: 200,
       height: 200,
-      fillStyle: this.darkMode ? 0x814E33 : 0xFCF5D8,
-      fillAlpha: this.darkMode ? 0.2 : 0.4,
-      strokeStyle: this.darkMode ? 0xF4860A : 0x814E33,
-      strokeAlpha: this.darkMode ? 0.3 : 0.2,
+      fillStyle: 0x814E33,
+      fillAlpha: 0.2,
+      strokeStyle: 0xF4860A,
+      strokeAlpha: 0.3,
       radius: 20
     };
 
@@ -96,7 +99,7 @@ class SpritePreviewScene extends Phaser.Scene {
 
       // Medium blur layer
       const blurMid = this.add.graphics();
-      blurMid.fillStyle(frameStyle.fillStyle, frameStyle.fillAlpha * 0.7);
+      blurMid.fillStyle(frameStyle.fillStyle, frameStyle.fillAlpha * 0.6);
       blurMid.fillRoundedRect(
         pos.x - frameStyle.width/2 - 5, 
         pos.y - frameStyle.height/2 - 5,
@@ -107,23 +110,29 @@ class SpritePreviewScene extends Phaser.Scene {
 
       // Main frame
       const frame = this.add.graphics();
-      frame.fillStyle(frameStyle.fillStyle, frameStyle.fillAlpha);
       frame.lineStyle(2, frameStyle.strokeStyle, frameStyle.strokeAlpha);
+      frame.fillStyle(frameStyle.fillStyle, frameStyle.fillAlpha);
       frame.fillRoundedRect(
-        pos.x - frameStyle.width/2,
-        pos.y - frameStyle.height/2,
-        frameStyle.width,
-        frameStyle.height,
-        frameStyle.radius
-      );
-      frame.strokeRoundedRect(
-        pos.x - frameStyle.width/2,
+        pos.x - frameStyle.width/2, 
         pos.y - frameStyle.height/2,
         frameStyle.width,
         frameStyle.height,
         frameStyle.radius
       );
     });
+
+    // Add direction labels with adjusted positions
+    const labelStyle = {
+      color: '#000000',
+      fontSize: '24px',
+      fontWeight: 'bold',
+      fontFamily: 'Arial'
+    };
+
+    this.add.text(144, positions.left.y - frameStyle.height/2 + 30, 'Left', labelStyle).setOrigin(0.5);
+    this.add.text(432, positions.left.y - frameStyle.height/2 + 30, 'Right', labelStyle).setOrigin(0.5);
+    this.add.text(144, positions.forward.y - frameStyle.height/2 + 30, 'Forward', labelStyle).setOrigin(0.5);
+    this.add.text(432, positions.forward.y - frameStyle.height/2 + 30, 'Back', labelStyle).setOrigin(0.5);
 
     // Initialize sprite containers
     this.sprites['BASE'] = {};
@@ -155,7 +164,7 @@ class SpritePreviewScene extends Phaser.Scene {
       this.sprites[layerName] = {};
       
       // Create a new texture with color replacement
-      this.createColorizedTexture(layerName, layer.style, layer.color);
+      const colorizedKey = this.colorizeTexture(this.textures.get(spriteKey), layerName, layer.color);
       
       // Create sprites and animations for each direction
       directions.forEach(dir => {
@@ -163,7 +172,7 @@ class SpritePreviewScene extends Phaser.Scene {
         this.sprites[layerName][dir] = this.add.sprite(
           positions[dir].x,
           positions[dir].y,
-          `${spriteKey}-colored`
+          colorizedKey
         );
         this.sprites[layerName][dir].setOrigin(0.5, 0.5);
         this.sprites[layerName][dir].setScale(3); // Make sprites even larger
@@ -171,7 +180,7 @@ class SpritePreviewScene extends Phaser.Scene {
         // Create animation
         this.anims.create({
           key: `${spriteKey}-${this.animationPrefix[dir]}`,
-          frames: this.anims.generateFrameNumbers(`${spriteKey}-colored`, {
+          frames: this.anims.generateFrameNumbers(colorizedKey, {
             frames: frameSequences[dir]
           }),
           frameRate: frameRates[dir],
@@ -182,123 +191,89 @@ class SpritePreviewScene extends Phaser.Scene {
         this.sprites[layerName][dir].play(`${spriteKey}-${this.animationPrefix[dir]}`);
       });
     });
+  }
 
-    // Add direction labels with adjusted positions
-    const labelStyle = {
-      color: this.darkMode ? '#FCF5D8' : '#814E33',
-      fontSize: '14px',
-      fontFamily: 'Arial'
-    };
-    this.add.text(144, 30, 'Left', labelStyle).setOrigin(0.5);
-    this.add.text(432, 30, 'Right', labelStyle).setOrigin(0.5);
-    this.add.text(144, 440, 'Forward', labelStyle).setOrigin(0.5);
-    this.add.text(432, 440, 'Back', labelStyle).setOrigin(0.5);
+  private colorizeTexture(texture: Phaser.Textures.Texture, layerName: string, color: string) {
+    const key = `${layerName}_${color}`;
+    
+    // Check if we already have this colorized texture
+    if (this.textures.exists(key)) {
+      return key;
+    }
+
+    // Create a temporary canvas to get image data
+    const tempCanvas = document.createElement('canvas');
+    const sourceImage = texture.getSourceImage();
+    tempCanvas.width = sourceImage.width;
+    tempCanvas.height = sourceImage.height;
+    
+    const ctx = tempCanvas.getContext('2d')!;
+    ctx.drawImage(sourceImage, 0, 0);
+    const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // Use the shared colorizer
+    const colorizedData = SpriteColorizer.colorizeTexture(imageData, color, {
+      preserveAlpha: true,
+      cacheKey: `preview_${layerName}_${color}`
+    });
+
+    // Create a new canvas for the colorized texture
+    const colorizedCanvas = document.createElement('canvas');
+    colorizedCanvas.width = tempCanvas.width;
+    colorizedCanvas.height = tempCanvas.height;
+    const colorizedCtx = colorizedCanvas.getContext('2d')!;
+    colorizedCtx.putImageData(colorizedData, 0, 0);
+
+    // Add the colorized texture to Phaser's texture manager with spritesheet config
+    this.textures.addSpriteSheet(key, colorizedCanvas, {
+      frameWidth: 48,
+      frameHeight: 60
+    });
+
+    return key;
   }
 
   updateColors(newLayers: PreviewCanvasProps['layers']) {
     Object.entries(newLayers).forEach(([layerName, layer]) => {
       if (this.sprites[layerName]) {
         const spriteKey = `${layerName}.${layer.style}`;
-        this.createColorizedTexture(layerName, layer.style, layer.color);
+        const baseTexture = this.textures.get(spriteKey);
+        if (!baseTexture) return;
+
+        const colorizedKey = this.colorizeTexture(baseTexture, layerName, layer.color);
         
         // Update all direction sprites
-        Object.values(this.sprites[layerName]).forEach(sprite => {
+        Object.entries(this.sprites[layerName]).forEach(([direction, sprite]) => {
           const currentAnim = sprite.anims.currentAnim;
-          sprite.setTexture(`${spriteKey}-colored`);
+          sprite.setTexture(colorizedKey);
+          
+          // Recreate animation with new texture
+          const animKey = `${spriteKey}-${this.animationPrefix[direction as Direction]}`;
+          if (this.anims.exists(animKey)) {
+            this.anims.remove(animKey);
+          }
+          
+          this.anims.create({
+            key: animKey,
+            frames: this.anims.generateFrameNumbers(colorizedKey, {
+              frames: frameSequences[direction as Direction]
+            }),
+            frameRate: frameRates[direction as Direction],
+            repeat: -1
+          });
+
           if (currentAnim) {
-            sprite.play(currentAnim.key);
+            sprite.play(animKey);
           }
         });
       }
     });
   }
 
-  private createColorizedTexture(layerName: string, style: string, color: string) {
-    const spriteKey = `${layerName}.${style}`;
-    const colorizedKey = `${spriteKey}-colored`;
-    const cacheKey = `${spriteKey}-${color}`;
-    
-    // Check if we have this color variation cached
-    if (this.colorCache[cacheKey]) {
-      const cachedImageData = this.colorCache[cacheKey];
-      const canvas = document.createElement('canvas');
-      canvas.width = cachedImageData.width;
-      canvas.height = cachedImageData.height;
-      const ctx = canvas.getContext('2d')!;
-      ctx.putImageData(cachedImageData, 0, 0);
-      
-      if (this.textures.exists(colorizedKey)) {
-        this.textures.remove(colorizedKey);
-      }
-      
-      this.textures.addSpriteSheet(colorizedKey, canvas, {
-        frameWidth: 48,
-        frameHeight: 60
-      });
-      
-      this.textures[colorizedKey] = canvas;
-      return;
-    }
-    
-    // Create new colorized texture
-    const originalTexture = this.textures.get(spriteKey);
-    const canvas = document.createElement('canvas');
-    canvas.width = originalTexture.source[0].width;
-    canvas.height = originalTexture.source[0].height;
-    const ctx = canvas.getContext('2d')!;
-    
-    ctx.drawImage(
-      originalTexture.getSourceImage() as HTMLImageElement,
-      0, 0
-    );
-    
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = imageData.data;
-    const targetColor = hexToRgb(color);
-    
-    for (let i = 0; i < pixels.length; i += 4) {
-      const a = pixels[i + 3];
-      if (a === 0) continue;
-      
-      const r = pixels[i];
-      const g = pixels[i + 1];
-      const b = pixels[i + 2];
-      
-      // Skip black pixels
-      if (r === 0 && g === 0 && b === 0) continue;
-      
-      const shadeIndex = matchesGreyShade({ r, g, b });
-      if (shadeIndex !== -1) {
-        const greyLevel = getGreyLevel(shadeIndex);
-        const newColor = calculateColorShade(targetColor, greyLevel);
-        pixels[i] = newColor.r;
-        pixels[i + 1] = newColor.g;
-        pixels[i + 2] = newColor.b;
-      }
-    }
-    
-    // Cache the result
-    this.colorCache[cacheKey] = imageData;
-    
-    ctx.putImageData(imageData, 0, 0);
-    
-    if (this.textures.exists(colorizedKey)) {
-      this.textures.remove(colorizedKey);
-    }
-    
-    this.textures.addSpriteSheet(colorizedKey, canvas, {
-      frameWidth: 48,
-      frameHeight: 60
-    });
-    
-    this.textures[colorizedKey] = canvas;
-  }
-
   destroy() {
     Object.values(this.textures).forEach(canvas => {
       canvas.remove();
     });
-    this.colorCache = {};
     super.destroy();
   }
 }
@@ -322,7 +297,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
           mode: Phaser.Scale.FIT,
           autoCenter: Phaser.Scale.CENTER_BOTH
         },
-        backgroundColor: darkMode ? 'rgba(17, 24, 39, 0)' : 'rgba(0, 0, 0, 0)',
+        backgroundColor: 'rgba(0, 0, 0, 0)',
         callbacks: {
           postBoot: () => {
             setIsLoading(false);
@@ -348,9 +323,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
     <div className="relative w-full flex-1 min-h-[480px] flex items-center justify-center rounded-lg">
       <div id="phaser-container" className="w-[576px] h-[480px]" />
       {isLoading && (
-        <div className={`absolute inset-0 flex items-center justify-center ${
-          darkMode ? 'bg-gray-800/75' : 'bg-white/75'
-        }`}>
+        <div className={`absolute inset-0 flex items-center justify-center bg-gray-800/75`}>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500" />
         </div>
       )}
