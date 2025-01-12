@@ -307,11 +307,15 @@ const WalkingPreview: React.FC<WalkingPreviewProps> = ({ layers }) => {
 
   useEffect(() => {
     // Create game instance
-    gameRef.current = new Phaser.Game({
+    const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
-      parent: 'walking-preview-container',
-      width: 720,
-      height: 360,
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 720,
+        height: 360,
+        parent: 'walking-preview-container',
+      },
       transparent: true,
       scene: WalkingScene,
       physics: {
@@ -320,7 +324,8 @@ const WalkingPreview: React.FC<WalkingPreviewProps> = ({ layers }) => {
           gravity: { y: 0 }
         }
       }
-    });
+    };
+    gameRef.current = new Phaser.Game(config);
 
     // Get scene reference once it's created
     gameRef.current.events.once('ready', () => {
@@ -364,54 +369,50 @@ const WalkingPreview: React.FC<WalkingPreviewProps> = ({ layers }) => {
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div id="walking-preview-container" className="w-[720px] h-[360px] mb-4" />
-      <div className="grid grid-cols-3 gap-2 w-[240px]">
-        <div></div>
-        <button
-          className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors"
-          onMouseDown={() => handleTouchStart('up')}
-          onMouseUp={() => handleTouchEnd('up')}
-          onMouseLeave={() => handleTouchEnd('up')}
-          onTouchStart={() => handleTouchStart('up')}
-          onTouchEnd={() => handleTouchEnd('up')}
-        >
-          ▲
-        </button>
-        <div></div>
-        <button
-          className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors"
-          onMouseDown={() => handleTouchStart('left')}
-          onMouseUp={() => handleTouchEnd('left')}
-          onMouseLeave={() => handleTouchEnd('left')}
-          onTouchStart={() => handleTouchStart('left')}
-          onTouchEnd={() => handleTouchEnd('left')}
-        >
-          ◄
-        </button>
-        <div></div>
-        <button
-          className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors"
-          onMouseDown={() => handleTouchStart('right')}
-          onMouseUp={() => handleTouchEnd('right')}
-          onMouseLeave={() => handleTouchEnd('right')}
-          onTouchStart={() => handleTouchStart('right')}
-          onTouchEnd={() => handleTouchEnd('right')}
-        >
-          ►
-        </button>
-        <div></div>
-        <button
-          className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors"
-          onMouseDown={() => handleTouchStart('down')}
-          onMouseUp={() => handleTouchEnd('down')}
-          onMouseLeave={() => handleTouchEnd('down')}
-          onTouchStart={() => handleTouchStart('down')}
-          onTouchEnd={() => handleTouchEnd('down')}
-        >
-          ▼
-        </button>
-        <div></div>
+    <div className="relative w-full h-full flex items-center justify-center rounded-lg overflow-hidden">
+      <div id="walking-preview-container" className="w-full h-full flex items-center justify-center" />
+      
+      {/* Direction Controls - Overlaid in bottom right */}
+      <div className="absolute bottom-6 right-6 grid grid-cols-3 gap-1.5 w-24">
+        {/* Up button */}
+        <div className="col-start-2">
+          <button
+            onMouseDown={() => handleTouchStart('up')}
+            onMouseUp={() => handleTouchEnd('up')}
+            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
+            ▲
+          </button>
+        </div>
+
+        {/* Left button */}
+        <div className="col-start-1 row-start-2">
+          <button
+            onMouseDown={() => handleTouchStart('left')}
+            onMouseUp={() => handleTouchEnd('left')}
+            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
+            ◄
+          </button>
+        </div>
+
+        {/* Down button */}
+        <div className="col-start-2 row-start-2">
+          <button
+            onMouseDown={() => handleTouchStart('down')}
+            onMouseUp={() => handleTouchEnd('down')}
+            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
+            ▼
+          </button>
+        </div>
+
+        {/* Right button */}
+        <div className="col-start-3 row-start-2">
+          <button
+            onMouseDown={() => handleTouchStart('right')}
+            onMouseUp={() => handleTouchEnd('right')}
+            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
+            ►
+          </button>
+        </div>
       </div>
     </div>
   );

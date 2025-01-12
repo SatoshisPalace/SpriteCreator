@@ -11,6 +11,7 @@ import { AdminSkinChanger, DefaultAtlasTxID } from "../constants/spriteAssets";
 export interface WalletStatus {
     isUnlocked: boolean;
     currentSkin: string | null;
+    faction: string | null;
     error?: string;
     contractName?: string;
     contractIcon?: string;
@@ -35,6 +36,12 @@ export interface TokenOption {
     denomination: number;
 }
 
+export interface FactionOptions {
+    name: string;
+description: string;
+mascot: string;
+perks: string[];
+};
 interface ContractResponse {
   result: {
     name: string;
@@ -69,9 +76,18 @@ export const checkWalletStatus = async (walletInfo?: { address: string }): Promi
             ],
             data: ""
         });
+        const result3 = await dryrun({
+            process: AdminSkinChanger,
+            tags: [
+                { name: "Action", value: "CheckFaction" },
+                { name: "Address", value: address }
+            ],
+            data: ""
+        });
 
         console.log("CheckUnlocked response:", result);
         console.log("CheckSkin response:", result2);
+        console.log("CheckFaction response:", result3);
 
         if (!result.Messages || result.Messages.length === 0) {
             throw new Error("No response from CheckUnlocked");
@@ -95,11 +111,20 @@ export const checkWalletStatus = async (walletInfo?: { address: string }): Promi
                 null : 
                 skinResponse;
         }
+        let faction = null;
+        if (result3.Messages && result3.Messages.length > 0) {
+            const factionResponse = result3.Messages[0].Data;
+            console.log("Faction response:", factionResponse);
+            faction = factionResponse == "None" ? 
+                null : 
+                factionResponse;
+        }
 
         console.log("Current skin:", skinTxId);
         return {
             isUnlocked,
             currentSkin: skinTxId,
+            faction: faction,
             contractIcon: "hqg-Em9DdYHYmMysyVi8LuTGF8IF_F7ZacgjYiSpj0k",
             contractName: "Sprite Customizer"
         };
@@ -151,7 +176,43 @@ export const updateUserSkin = async (wallet: any, spriteTxId: string) => {
         throw error;
     }
 };
+export const setFaction = async (wallet: any, faction: string) => {
+    if (!wallet?.address) {
+        throw new Error("No wallet connected");
+    }
 
+    try {
+        console.log("Setting faction for wallet:", wallet.address);
+        
+        // First check if user is authorized
+        const status = await checkWalletStatus(wallet);
+        if (!status.isUnlocked) {
+            throw new Error("You do not have Eternal Pass.");
+        }
+        const signer = createDataItemSigner(window.arweaveWallet);
+        const result = await message({
+            process: AdminSkinChanger,
+            tags: [
+                { name: "Action", value: "SetFaction" },
+                { name: "Faction", value: faction },
+            ],
+            //signer: createDataItemSigner(wallet),
+            signer,
+            data: ""
+        });
+
+        console.log("SetFaction response:", result);
+
+        if (!result.messages || result.messages.length === 0) {
+            throw new Error("No response from SetFaction");
+        }
+
+        return result.messages[0].data;
+    } catch (error) {
+        console.error("Error in setFaction:", error);
+        throw error;
+    }
+};
 // Get purchase schema
 export const getPurchaseSchema = async (wallet: any) => {
     if (!wallet?.address) {
@@ -224,7 +285,46 @@ export const getPurchaseOptions = async (): Promise<TokenOption[]> => {
         throw error;
     }
 };
+export const getFactionOptions = async (): Promise<FactionOptions[]> => {
+    try {
+        console.log("Getting purchase options");
+        
+        const result = await dryrun({
+            process: AdminSkinChanger,
+            tags: [
+                { name: "Action", value: "GetFactions" }
+            ],
+            data: ""
+        });
 
+        console.log("GetFactions response:", result);
+
+        if (!result.Messages || result.Messages.length === 0) {
+            throw new Error("No response from GetFactions");
+        }
+
+        const response = JSON.parse(result.Messages[0].Data);
+        console.log("Parsed response:", response);
+
+        // The contract returns { result: [...tokens] }
+        const options = response.result;
+        
+        if (!Array.isArray(options)) {
+            console.error("Invalid options format:", options);
+            throw new Error("Invalid purchase options format");
+        }
+
+        return options.map((option: any) => ({
+            name: option.name,
+            description: option.description,
+            mascot: option.mascot,
+            perks: option.perks
+        }));
+    } catch (error) {
+        console.error('Error getting purchase options:', error);
+        throw error;
+    }
+};
 export const formatTokenAmount = (amount: string, denomination: number): string => {
     // Convert amount to number
     const numAmount = parseFloat(amount);
@@ -336,6 +436,32 @@ export const bulkImportAddresses = async (data: BulkImportRequest): Promise<Bulk
         return result.result;
     } catch (error) {
         console.error("Error importing addresses:", error);
+        throw error;
+    }
+};
+
+// Remove user access
+export const removeUser = async (userId: string) => {
+    try {
+
+        const signer = createDataItemSigner(window.arweaveWallet);
+        const result = await message({
+            process: AdminSkinChanger,
+            tags: [
+                { name: "Action", value: "RemoveUser" },
+                { name: "UserId", value: userId }
+            ],
+            signer,
+            data: ""
+        });
+
+        if (!result.Messages || result.Messages.length === 0) {
+            throw new Error("No response from RemoveUser");
+        }
+
+        return JSON.parse(result.Messages[0].Data);
+    } catch (error) {
+        console.error("Error removing user:", error);
         throw error;
     }
 };

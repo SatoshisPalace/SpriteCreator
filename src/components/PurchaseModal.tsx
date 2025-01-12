@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getPurchaseOptions, TokenOption, formatTokenAmount } from '../utils/aoHelpers';
 import { Gateway } from '../constants/spriteAssets';
+import accessTicketImg from '../assets/access-ticket.png';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -71,24 +72,43 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({
         </button>
 
         {/* Content */}
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div className="text-center">
-            {selectedToken?.icon && (
-              <img 
-                src={Gateway + selectedToken.icon} 
-                alt={`${selectedToken.name} Icon`} 
-                className="w-24 h-24 mx-auto mb-4 rounded-full border-2 border-[#F4860A]/30"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            )}
-            <h3 className="text-2xl font-bold text-[#FCF5D8]">
-              {contractName}
+            <img 
+              src={accessTicketImg} 
+              alt="Eternal Pass Ticket" 
+              className="w-32 h-32 mx-auto mb-4"
+            />
+            <h3 className="text-3xl font-bold text-[#FCF5D8] mb-2">
+              Eternal Pass
             </h3>
-            <p className="mt-2 text-[#FCF5D8]/80">
-              Select a payment method to purchase access
+            <p className="text-lg text-[#FCF5D8]/90 mb-6">
+              Unlock exclusive access to premium features
             </p>
+            
+            {/* Benefits List */}
+            <ul className="space-y-3 text-left max-w-md mx-auto bg-[#814E33]/20 rounded-xl p-4 border border-[#F4860A]/30">
+              <li className="flex items-center gap-2">
+                <span className="text-[#F4860A]">✦</span>
+                <span className="text-[#FCF5D8]">Change your character's skin and appearance</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-[#F4860A]">✦</span>
+                <span className="text-[#FCF5D8]">Join exclusive factions and guilds</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-[#F4860A]">✦</span>
+                <span className="text-[#FCF5D8]">Earn unique rewards and special items</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-[#F4860A]">✦</span>
+                <span className="text-[#FCF5D8]">Early access to new features and updates</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-[#F4860A]">✦</span>
+                <span className="text-[#FCF5D8]">And much more to come!</span>
+              </li>
+            </ul>
           </div>
 
           <div className="space-y-4">
@@ -98,38 +118,56 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({
               </div>
             )}
             
-            {options.map((option) => (
-              <div 
-                key={option.token}
-                className={`p-4 rounded-xl transition-all duration-300 cursor-pointer
-                  ${selectedToken?.token === option.token 
-                    ? 'bg-[#814E33]/40 border-[#F4860A]/50' 
-                    : 'bg-[#814E33]/20 hover:bg-[#814E33]/30 border-[#F4860A]/30'
-                  } border`}
-                onClick={() => setSelectedToken(option)}
-              >
-                <div className="flex justify-between items-center">
+            {/* Payment Options Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              {options.map((option) => (
+                <div 
+                  key={option.token}
+                  className={`p-3 rounded-xl transition-all duration-300 cursor-pointer
+                    ${selectedToken?.token === option.token 
+                      ? 'bg-[#814E33]/40 border-[#F4860A]/50' 
+                      : 'bg-[#814E33]/20 hover:bg-[#814E33]/30 border-[#F4860A]/30'
+                    } border`}
+                  onClick={() => setSelectedToken(option)}
+                >
                   <div className="flex items-center gap-3">
                     {option.icon && (
                       <img 
                         src={Gateway + option.icon} 
                         alt={`${option.name} icon`}
-                        className="w-8 h-8 rounded-full"
+                        className="w-10 h-10 rounded-full"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                         }}
                       />
                     )}
                     <div>
-                      <h4 className="text-lg font-semibold text-[#FCF5D8]">{option.name}</h4>
+                      <h4 className="font-semibold text-[#FCF5D8]">{option.name}</h4>
+                      <div className="font-bold text-[#F4860A]">
+                        {formatTokenAmount(option.amount, option.denomination)}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-xl font-bold text-[#F4860A]">
-                    {formatTokenAmount(option.amount, option.denomination)}
+                </div>
+              ))}
+              {/* Fill remaining slots with "Coming Soon" */}
+              {Array.from({ length: Math.max(0, 4 - options.length) }).map((_, index) => (
+                <div 
+                  key={`coming-soon-${index}`}
+                  className="p-3 rounded-xl bg-[#814E33]/10 border border-[#F4860A]/20"
+                >
+                  <div className="flex items-center gap-3 h-10">
+                    <div className="w-10 h-10 rounded-full bg-[#814E33]/20 flex items-center justify-center">
+                      <span className="text-[#FCF5D8]/40 text-2xl">+</span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#FCF5D8]/60">New method</p>
+                      <p className="text-sm text-[#FCF5D8]/40">coming soon!</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-col gap-4">
@@ -145,16 +183,6 @@ const PurchaseModal: React.FC<PurchaseModalProps> = ({
                 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processing...' : 'Purchase Now'}
-            </button>
-            <button
-              onClick={onClose}
-              className="w-full py-2 px-4 text-sm font-medium rounded-xl
-                bg-[#814E33]/20 text-[#FCF5D8]/80
-                hover:bg-[#814E33]/30 hover:text-[#FCF5D8]
-                transition-all duration-300
-                border border-[#F4860A]/30"
-            >
-              Cancel
             </button>
           </div>
         </div>

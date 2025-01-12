@@ -1,129 +1,134 @@
 import React, { useState, useEffect } from 'react';
 import { getPurchaseOptions, purchaseAccess, TokenOption } from '../utils/aoHelpers';
+import { Gateway } from '../constants/spriteAssets';
+import { currentTheme } from '../constants/theme';
 
 interface PurchaseAccessProps {
     wallet: any;
     onPurchaseComplete?: () => void;
+    darkMode?: boolean;
+    isUnlocked?: boolean;
 }
 
-const PurchaseAccess: React.FC<PurchaseAccessProps> = ({ wallet, onPurchaseComplete }) => {
+const PurchaseAccess: React.FC<PurchaseAccessProps> = ({ wallet, onPurchaseComplete, darkMode = false, isUnlocked = false }) => {
     const [options, setOptions] = useState<TokenOption[]>([]);
     const [selectedToken, setSelectedToken] = useState<TokenOption | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = currentTheme(darkMode);
 
     useEffect(() => {
-        loadPurchaseOptions();
-    }, []);
+        if (!isUnlocked) {
+            loadPurchaseOptions();
+        }
+    }, [isUnlocked]);
 
     const loadPurchaseOptions = async () => {
         try {
+            setLoading(true);
+            setError(null);
             const result = await getPurchaseOptions();
-            if (result.error) {
-                setError(result.error);
-            } else {
-                setOptions(result.tokens);
-                if (result.tokens.length > 0) {
-                    setSelectedToken(result.tokens[0]);
+            if (result && Array.isArray(result)) {
+                setOptions(result);
+                if (result.length > 0) {
+                    setSelectedToken(result[0]);
                 }
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load purchase options');
-        }
-    };
-
-    const handlePurchase = async () => {
-        if (!selectedToken) return;
-        
-        setLoading(true);
-        setError(null);
-        
-        try {
-            const success = await purchaseAccess(
-                { address: wallet },
-                selectedToken.token,
-                selectedToken.amount
-            );
-            
-            if (success) {
-                onPurchaseComplete?.();
             } else {
-                setError('Purchase failed');
+                setError('Invalid purchase options format');
             }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Purchase failed');
+        } catch (error) {
+            setError(error instanceof Error ? error.message : 'Failed to load purchase options');
         } finally {
             setLoading(false);
         }
     };
 
-    if (options.length === 0 && !error) {
-        return <div>Loading purchase options...</div>;
+    const handlePurchase = async () => {
+        if (!selectedToken) {
+            setError('Please select a token first');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+            await purchaseAccess(selectedToken);
+            onPurchaseComplete?.();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : 'Purchase failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return <div className={`${theme.text} opacity-90`}>Loading purchase options...</div>;
+    }
+
+    if (error) {
+        return <div className="text-red-400">{error}</div>;
+    }
+
+    if (isUnlocked) {
+        return (
+            <div className="text-center space-y-4">
+                <div className={`text-xl font-medium ${theme.text}`}>
+                    Thank you for your purchase!
+                </div>
+                <div className={`text-lg ${theme.text} opacity-80`}>
+                    You now have full access to all features.
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="purchase-access">
-            <h3>Purchase Access</h3>
-            {error && (
-                <div className="error-message">
-                    {error}
-                </div>
-            )}
-            <div className="token-selector">
-                <select 
-                    value={selectedToken?.token || ''}
-                    onChange={(e) => {
-                        const token = options.find(t => t.token === e.target.value);
-                        setSelectedToken(token || null);
-                    }}
-                    disabled={loading}
-                >
+        <div className="space-y-6">
+            {/* Token Selection */}
+            <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {options.map((option) => (
-                        <option key={option.token} value={option.token}>
-                            {option.name || option.token} ({option.amount})
-                        </option>
+                        <button
+                            key={option.token}
+                            onClick={() => setSelectedToken(option)}
+                            className={`p-4 rounded-xl border transition-all duration-300 ${
+                                selectedToken?.token === option.token
+                                    ? 'border-[#F4860A] bg-[#814E33]/30'
+                                    : 'border-[#F4860A]/30 bg-[#814E33]/20 hover:bg-[#814E33]/25'
+                            }`}
+                        >
+                            <div className="flex items-center gap-3">
+                                {option.icon && (
+                                    <img 
+                                        src={`${Gateway}${option.icon}`} 
+                                        alt={option.name} 
+                                        className="w-8 h-8 rounded-full"
+                                    />
+                                )}
+                                <div className="text-left">
+                                    <div className={`font-medium ${theme.text}`}>{option.name}</div>
+                                    <div className={`text-sm ${theme.text} opacity-70`}>
+                                        {option.amount} tokens
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
                     ))}
-                </select>
+                </div>
             </div>
-            <button 
+
+            {/* Purchase Button */}
+            <button
                 onClick={handlePurchase}
                 disabled={loading || !selectedToken}
-                className="purchase-button"
+                className={`w-full py-3 px-6 rounded-xl font-medium transition-all duration-300 
+                    ${loading || !selectedToken
+                        ? 'bg-[#814E33]/20 text-[#FCF5D8]/50 cursor-not-allowed'
+                        : 'bg-[#F4860A] hover:bg-[#F4860A]/90'
+                    } ${theme.text}`}
             >
                 {loading ? 'Processing...' : 'Purchase Access'}
             </button>
-            <style jsx>{`
-                .purchase-access {
-                    padding: 1rem;
-                    border: 1px solid #ccc;
-                    border-radius: 4px;
-                    max-width: 300px;
-                }
-                .error-message {
-                    color: red;
-                    margin-bottom: 1rem;
-                }
-                .token-selector {
-                    margin-bottom: 1rem;
-                }
-                .token-selector select {
-                    width: 100%;
-                    padding: 0.5rem;
-                }
-                .purchase-button {
-                    width: 100%;
-                    padding: 0.5rem;
-                    background-color: #4CAF50;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                }
-                .purchase-button:disabled {
-                    background-color: #cccccc;
-                    cursor: not-allowed;
-                }
-            `}</style>
         </div>
     );
 };

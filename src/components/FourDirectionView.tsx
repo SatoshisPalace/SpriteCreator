@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { hexToRgb, matchesGreyShade, calculateColorShade, getGreyLevel } from '../utils/colorMapping';
 import { SpriteColorizer } from '../utils/spriteColorizer';
 
-interface PreviewCanvasProps {
+interface FourDirectionViewProps {
   layers: {
     [key: string]: {
       style: string;
@@ -15,10 +15,10 @@ interface PreviewCanvasProps {
 
 type Direction = 'forward' | 'left' | 'right' | 'back';
 
-class SpritePreviewScene extends Phaser.Scene {
+class FourDirectionScene extends Phaser.Scene {
   private sprites: { [key: string]: { [direction in Direction]: Phaser.GameObjects.Sprite } } = {};
   private textures: { [key: string]: HTMLCanvasElement } = {};
-  private layers: PreviewCanvasProps['layers'];
+  private layers: FourDirectionViewProps['layers'];
   private animationPrefix: { [key in Direction]: string } = {
     forward: 'walk-down',
     left: 'walk-left',
@@ -28,8 +28,8 @@ class SpritePreviewScene extends Phaser.Scene {
   private darkMode: boolean;
   setIsLoading: (isLoading: boolean) => void;
 
-  constructor(layers: PreviewCanvasProps['layers'], darkMode: boolean) {
-    super({ key: 'SpritePreviewScene' });
+  constructor(layers: FourDirectionViewProps['layers'], darkMode: boolean) {
+    super({ key: 'FourDirectionScene' });
     this.layers = layers;
     this.darkMode = darkMode;
   }
@@ -67,10 +67,10 @@ class SpritePreviewScene extends Phaser.Scene {
     const directions: Direction[] = ['forward', 'left', 'right', 'back'];
     const frameRates = { forward: 8, left: 8, right: 8, back: 8 };
     const positions = {
-      forward: { x: 144, y: 340 },
-      left: { x: 144, y: 100 },
-      right: { x: 432, y: 100 },
-      back: { x: 432, y: 340 }
+      forward: { x: 160, y: 120 },
+      left: { x: 360, y: 120 },
+      right: { x: 560, y: 120 },
+      back: { x: 760, y: 120 }
     };
     
     // Define frame sequences for ping-pong style animation
@@ -83,7 +83,7 @@ class SpritePreviewScene extends Phaser.Scene {
 
     // Add glassmorphism frames
     const frameStyle = {
-      width: 200,
+      width: 175,
       height: 200,
       fillStyle: 0x814E33,
       fillAlpha: 0.2,
@@ -131,16 +131,29 @@ class SpritePreviewScene extends Phaser.Scene {
 
     // Add direction labels with adjusted positions
     const labelStyle = {
-      color: '#000000',
+      color: this.darkMode ? '#FCF5D8' : '#2A1912',
       fontSize: '24px',
       fontWeight: 'bold',
       fontFamily: 'Arial'
     };
 
-    this.add.text(144, positions.left.y - frameStyle.height/2 + 30, 'Left', labelStyle).setOrigin(0.5);
-    this.add.text(432, positions.left.y - frameStyle.height/2 + 30, 'Right', labelStyle).setOrigin(0.5);
-    this.add.text(144, positions.forward.y - frameStyle.height/2 + 30, 'Forward', labelStyle).setOrigin(0.5);
-    this.add.text(432, positions.forward.y - frameStyle.height/2 + 30, 'Back', labelStyle).setOrigin(0.5);
+    // Add direction descriptions
+    const descriptions = {
+      forward: 'Forward',
+      left: 'Left',
+      right: 'Right',
+      back: 'Back'
+    };
+
+    Object.entries(positions).forEach(([direction, pos]) => {
+      // Title
+      this.add.text(
+        pos.x,
+        pos.y - frameStyle.height/2 + 25,
+        descriptions[direction as Direction],
+        labelStyle
+      ).setOrigin(0.5);
+    });
 
     // Initialize sprite containers
     this.sprites['BASE'] = {};
@@ -150,7 +163,7 @@ class SpritePreviewScene extends Phaser.Scene {
       // Create base sprite for this direction
       this.sprites['BASE'][dir] = this.add.sprite(positions[dir].x, positions[dir].y, 'BASE');
       this.sprites['BASE'][dir].setOrigin(0.5, 0.5);
-      this.sprites['BASE'][dir].setScale(3); // Make sprites even larger
+      this.sprites['BASE'][dir].setScale(3); // Make sprites larger
 
       // Create animation for base
       this.anims.create({
@@ -183,7 +196,7 @@ class SpritePreviewScene extends Phaser.Scene {
           colorizedKey
         );
         this.sprites[layerName][dir].setOrigin(0.5, 0.5);
-        this.sprites[layerName][dir].setScale(3); // Make sprites even larger
+        this.sprites[layerName][dir].setScale(3); // Make sprites larger
 
         // Create animation
         this.anims.create({
@@ -241,7 +254,7 @@ class SpritePreviewScene extends Phaser.Scene {
     return key;
   }
 
-  updateColors(newLayers: PreviewCanvasProps['layers']) {
+  updateColors(newLayers: FourDirectionViewProps['layers']) {
     Object.entries(newLayers).forEach(([layerName, layer]) => {
       if (this.sprites[layerName]) {
         const spriteKey = `${layerName}.${layer.style}`;
@@ -286,19 +299,23 @@ class SpritePreviewScene extends Phaser.Scene {
   }
 }
 
-const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false }) => {
+const FourDirectionView: React.FC<FourDirectionViewProps> = ({ layers, darkMode = false }) => {
   const gameRef = useRef<Phaser.Game | null>(null);
-  const sceneRef = useRef<SpritePreviewScene | null>(null);
+  const sceneRef = useRef<FourDirectionScene | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!gameRef.current) {
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        width: 576,
-        height: 480,
-        parent: 'phaser-container',
-        scene: class extends SpritePreviewScene {
+        scale: {
+          mode: Phaser.Scale.FIT,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
+          width: 960,
+          height: 280,  // Increased height to accommodate larger frames
+        },
+        parent: 'four-direction-container',
+        scene: class extends FourDirectionScene {
           constructor() {
             super(layers, darkMode);
             this.setIsLoading = setIsLoading;
@@ -306,15 +323,11 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
         },
         transparent: true,
         pixelArt: true,
-        scale: {
-          mode: Phaser.Scale.FIT,
-          autoCenter: Phaser.Scale.CENTER_BOTH
-        },
         backgroundColor: 'rgba(0, 0, 0, 0)'
       };
 
       gameRef.current = new Phaser.Game(config);
-      sceneRef.current = gameRef.current.scene.getScene('SpritePreviewScene') as SpritePreviewScene;
+      sceneRef.current = gameRef.current.scene.getScene('FourDirectionScene') as FourDirectionScene;
     } else if (sceneRef.current) {
       sceneRef.current.updateColors(layers);
     }
@@ -328,10 +341,10 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
   }, [layers, darkMode]);
 
   return (
-    <div className="relative w-full flex-1 min-h-[480px] flex items-center justify-center rounded-lg">
-      <div id="phaser-container" className="w-[576px] h-[480px]" />
+    <div className="relative w-full h-full flex items-center justify-center rounded-lg overflow-hidden">
+      <div id="four-direction-container" className="w-full h-full flex items-center justify-center" />
       {isLoading && (
-        <div className={`absolute inset-0 flex items-center justify-center bg-gray-800/75`}>
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-800/75">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500" />
         </div>
       )}
@@ -339,4 +352,4 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
   );
 };
 
-export default PreviewCanvas;
+export default FourDirectionView;

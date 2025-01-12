@@ -1,44 +1,58 @@
+import React from 'react';
+import ColorSlider from './ColorSlider';
+import ClothesSelector from './ClothesSelector';
+import { currentTheme } from '../constants/theme';
+
 interface LayerSelectorProps {
-  layerType: string;  // e.g., "PANTS", "SHIRT"
-  currentStyle: string; // e.g., "STYLE1", "STYLE2"
-  availableStyles: string[];
-  onStyleChange: (style: string) => void;
+  layers: {
+    [key: string]: {
+      style: string;
+      color: string;
+    };
+  };
+  availableStyles: {
+    name: string;
+    options: string[];
+  }[];
+  onStyleChange: (layerName: string, style: string) => void;
+  onColorChange: (layerName: string, color: string) => void;
   darkMode?: boolean;
 }
 
 const LayerSelector: React.FC<LayerSelectorProps> = ({
-  layerType,
-  currentStyle,
+  layers,
   availableStyles,
   onStyleChange,
-  darkMode,
+  onColorChange,
+  darkMode = false
 }) => {
+  const theme = currentTheme(darkMode);
+
   return (
-    <div className="flex items-center space-x-2">
-      <label className="text-xs font-medium capitalize min-w-[60px] truncate">
-        {layerType.toLowerCase()}:
-      </label>
-      <select
-        value={currentStyle}
-        onChange={(e) => onStyleChange(e.target.value)}
-        className={`flex-1 py-1 px-2 text-sm border rounded transition-all duration-300 ${
-          darkMode 
-            ? 'bg-[#814E33]/20 border-[#F4860A]/30 text-[#FCF5D8] focus:border-[#F4860A]/50' 
-            : 'bg-[#FCF5D8]/40 border-[#814E33]/20 text-[#814E33] focus:border-[#814E33]/50'
-        } outline-none hover:border-opacity-50`}
-      >
-        {availableStyles.map((style) => (
-          <option 
-            key={style} 
-            value={style}
-            className={darkMode 
-              ? 'bg-[#814E33] text-[#FCF5D8]' 
-              : 'bg-[#FCF5D8] text-[#814E33]'}
-          >
-            {style}
-          </option>
-        ))}
-      </select>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
+      {Object.entries(layers).map(([layerName, layer]) => (
+        <div 
+          key={layerName} 
+          className={`p-2 sm:p-3 rounded-xl backdrop-blur-md transition-all duration-300 hover:shadow-lg w-full
+            ${theme.container} border ${theme.border}`}
+        >
+          <div className="space-y-2 w-full">
+            <ClothesSelector
+              layerType={layerName}
+              currentStyle={layer.style}
+              availableStyles={availableStyles.find(category => category.name === layerName)?.options || []}
+              onStyleChange={(style) => onStyleChange(layerName, style)}
+              darkMode={darkMode}
+            />
+            <ColorSlider
+              layerName={layerName}
+              color={layer.color}
+              onColorChange={(color) => onColorChange(layerName, color)}
+              darkMode={darkMode}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
