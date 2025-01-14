@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { checkWalletStatus, purchaseAccess, TokenOption } from './utils/aoHelpers';
 import { currentTheme } from './constants/theme';
 import accessTicketImg from './assets/access-ticket.png';
-import logoPath from './assets/rune-realm-transparent.png';
 import PurchaseModal from './components/PurchaseModal';
 import Confetti from 'react-confetti';
 import Header from './components/Header';

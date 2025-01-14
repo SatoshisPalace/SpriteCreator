@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import { getFactionOptions, FactionOptions, setFaction, purchaseAccess, TokenOption } from '../utils/aoHelpers';
 import { currentTheme } from '../constants/theme';

@@ -9,11 +9,8 @@ export default defineConfig({
   ],
   build: {
     rollupOptions: {
-      external: ['react-router-dom'],
       output: {
-        globals: {
-          'react-router-dom': 'ReactRouterDOM'
-        }
+        globals: {}
       }
     }
   },
