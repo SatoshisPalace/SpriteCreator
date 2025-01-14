@@ -312,7 +312,7 @@ const WalkingPreview: React.FC<WalkingPreviewProps> = ({ layers }) => {
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 720,
+        width: 630,
         height: 360,
         parent: 'walking-preview-container',
       },
@@ -369,49 +369,53 @@ const WalkingPreview: React.FC<WalkingPreviewProps> = ({ layers }) => {
   };
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center rounded-lg overflow-hidden">
-      <div id="walking-preview-container" className="w-full h-full flex items-center justify-center" />
-      
-      {/* Direction Controls - Overlaid in bottom right */}
-      <div className="absolute bottom-6 right-6 grid grid-cols-3 gap-1.5 w-24">
-        {/* Up button */}
-        <div className="col-start-2">
-          <button
-            onMouseDown={() => handleTouchStart('up')}
-            onMouseUp={() => handleTouchEnd('up')}
-            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
-            ▲
-          </button>
-        </div>
+    <div className="relative w-full h-full flex items-center justify-center">
+      <div 
+        id="walking-preview-container" 
+        className="relative w-full h-full flex items-center justify-center bg-black/5 rounded-xl overflow-hidden"
+        style={{ minHeight: '360px' }}
+      >
+        {/* Touch controls */}
+        <div className="absolute bottom-6 right-6 grid grid-cols-3 gap-1.5 w-24">
+          {/* Up button */}
+          <div className="col-start-2">
+            <button
+              onMouseDown={() => handleTouchStart('up')}
+              onMouseUp={() => handleTouchEnd('up')}
+              className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
+              ▲
+            </button>
+          </div>
 
-        {/* Left button */}
-        <div className="col-start-1 row-start-2">
-          <button
-            onMouseDown={() => handleTouchStart('left')}
-            onMouseUp={() => handleTouchEnd('left')}
-            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
-            ◄
-          </button>
-        </div>
+          {/* Left button */}
+          <div className="col-start-1 row-start-2">
+            <button
+              onMouseDown={() => handleTouchStart('left')}
+              onMouseUp={() => handleTouchEnd('left')}
+              className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
+              ◄
+            </button>
+          </div>
 
-        {/* Down button */}
-        <div className="col-start-2 row-start-2">
-          <button
-            onMouseDown={() => handleTouchStart('down')}
-            onMouseUp={() => handleTouchEnd('down')}
-            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
-            ▼
-          </button>
-        </div>
+          {/* Down button */}
+          <div className="col-start-2 row-start-2">
+            <button
+              onMouseDown={() => handleTouchStart('down')}
+              onMouseUp={() => handleTouchEnd('down')}
+              className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
+              ▼
+            </button>
+          </div>
 
-        {/* Right button */}
-        <div className="col-start-3 row-start-2">
-          <button
-            onMouseDown={() => handleTouchStart('right')}
-            onMouseUp={() => handleTouchEnd('right')}
-            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
-            ►
-          </button>
+          {/* Right button */}
+          <div className="col-start-3 row-start-2">
+            <button
+              onMouseDown={() => handleTouchStart('right')}
+              onMouseUp={() => handleTouchEnd('right')}
+              className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition-colors">
+              ►
+            </button>
+          </div>
         </div>
       </div>
     </div>

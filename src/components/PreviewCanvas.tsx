@@ -67,10 +67,10 @@ class SpritePreviewScene extends Phaser.Scene {
     const directions: Direction[] = ['forward', 'left', 'right', 'back'];
     const frameRates = { forward: 8, left: 8, right: 8, back: 8 };
     const positions = {
-      forward: { x: 144, y: 340 },
-      left: { x: 144, y: 100 },
-      right: { x: 432, y: 100 },
-      back: { x: 432, y: 340 }
+      forward: { x: 108, y: 255 },
+      left: { x: 108, y: 75 },
+      right: { x: 324, y: 75 },
+      back: { x: 324, y: 255 }
     };
     
     // Define frame sequences for ping-pong style animation
@@ -137,10 +137,10 @@ class SpritePreviewScene extends Phaser.Scene {
       fontFamily: 'Arial'
     };
 
-    this.add.text(144, positions.left.y - frameStyle.height/2 + 30, 'Left', labelStyle).setOrigin(0.5);
-    this.add.text(432, positions.left.y - frameStyle.height/2 + 30, 'Right', labelStyle).setOrigin(0.5);
-    this.add.text(144, positions.forward.y - frameStyle.height/2 + 30, 'Forward', labelStyle).setOrigin(0.5);
-    this.add.text(432, positions.forward.y - frameStyle.height/2 + 30, 'Back', labelStyle).setOrigin(0.5);
+    this.add.text(108, positions.left.y - frameStyle.height/2 + 30, 'Left', labelStyle).setOrigin(0.5);
+    this.add.text(324, positions.left.y - frameStyle.height/2 + 30, 'Right', labelStyle).setOrigin(0.5);
+    this.add.text(108, positions.forward.y - frameStyle.height/2 + 30, 'Forward', labelStyle).setOrigin(0.5);
+    this.add.text(324, positions.forward.y - frameStyle.height/2 + 30, 'Back', labelStyle).setOrigin(0.5);
 
     // Initialize sprite containers
     this.sprites['BASE'] = {};
@@ -295,8 +295,8 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
     if (!gameRef.current) {
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        width: 576,
-        height: 480,
+        width: 432,
+        height: 360,
         parent: 'phaser-container',
         scene: class extends SpritePreviewScene {
           constructor() {
@@ -328,8 +328,8 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ layers, darkMode = false 
   }, [layers, darkMode]);
 
   return (
-    <div className="relative w-full flex-1 min-h-[480px] flex items-center justify-center rounded-lg">
-      <div id="phaser-container" className="w-[576px] h-[480px]" />
+    <div className="relative w-full flex-1 min-h-[360px] flex items-center justify-center rounded-lg">
+      <div id="phaser-container" className="w-[432px] h-[360px]" />
       {isLoading && (
         <div className={`absolute inset-0 flex items-center justify-center bg-gray-800/75`}>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500" />

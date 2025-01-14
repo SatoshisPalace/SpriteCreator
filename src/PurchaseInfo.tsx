@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { checkWalletStatus } from './utils/aoHelpers';
+import { Link } from 'react-router-dom';
+import { checkWalletStatus, purchaseAccess, TokenOption } from './utils/aoHelpers';
 import { currentTheme } from './constants/theme';
-import PurchaseAccess from './components/PurchaseAccess';
 import accessTicketImg from './assets/access-ticket.png';
 import logoPath from './assets/rune-realm-transparent.png';
+import PurchaseModal from './components/PurchaseModal';
+import Confetti from 'react-confetti';
+import Header from './components/Header';
 
 interface PurchaseInfoProps {
   darkMode?: boolean;
@@ -12,11 +14,12 @@ interface PurchaseInfoProps {
 }
 
 const PurchaseInfo: React.FC<PurchaseInfoProps> = ({ darkMode = false, onThemeChange }) => {
-  const navigate = useNavigate();
   const [isConnected, setIsConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [theme, setTheme] = useState(currentTheme(darkMode));
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     setTheme(currentTheme(darkMode));
@@ -58,37 +61,38 @@ const PurchaseInfo: React.FC<PurchaseInfoProps> = ({ darkMode = false, onThemeCh
     }
   };
 
+  const handlePurchase = async (selectedToken: TokenOption) => {
+    try {
+      await purchaseAccess(selectedToken);
+      setShowConfetti(true);
+      setTimeout(() => {
+        setShowConfetti(false);
+        checkWalletConnection();
+      }, 5000);
+    } catch (error) {
+      console.error('Purchase failed:', error);
+      throw error;
+    }
+  };
+
   return (
     <div className={`min-h-screen ${theme.bg} ${theme.text}`}>
+      <Header
+        theme={theme}
+        darkMode={darkMode}
+        onDarkModeToggle={handleDarkModeToggle}
+        showBackButton={false}
+      />
+      {showConfetti && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={500}
+          gravity={0.3}
+        />
+      )}
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <img 
-            src={logoPath}
-            alt="Rune Realm" 
-            className="h-16 sm:h-20"
-          />
-          <div className="flex gap-4 items-center">
-            <button
-              onClick={handleDarkModeToggle}
-              className={`py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 
-                ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
-                backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
-            >
-              {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
-            </button>
-            
-            <button
-              onClick={isConnected ? undefined : connectWallet}
-              className={`py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 
-                ${isConnected ? 'bg-green-500/20 border-green-500/30' : 'bg-[#F4860A] hover:bg-[#F4860A]/90'} 
-                backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.text}`}
-            >
-              {isConnected ? 'Connected' : 'Connect Wallet'}
-            </button>
-          </div>
-        </div>
-
         {/* Main Content */}
         <div className={`max-w-4xl mx-auto ${theme.container} rounded-2xl shadow-2xl p-6 border ${theme.border}`}>
           <div className="text-center mb-8">
@@ -111,32 +115,87 @@ const PurchaseInfo: React.FC<PurchaseInfoProps> = ({ darkMode = false, onThemeCh
           <div className="mt-8">
             {isConnected ? (
               <>
-                <PurchaseAccess 
-                  wallet={window.arweaveWallet} 
-                  onPurchaseComplete={() => setIsUnlocked(true)}
-                  darkMode={darkMode}
-                  isUnlocked={isUnlocked}
-                />
-                {isUnlocked && (
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-                    <Link
-                      to="/customize"
-                      className={`px-6 py-3 rounded-xl text-lg font-medium transition-all duration-300 transform hover:scale-105
-                        ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
-                        backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
+                {!isUnlocked && (
+                  <div className="flex justify-center mt-8">
+                    <button
+                      onClick={() => setShowPurchaseModal(true)}
+                      className="relative px-8 py-4 text-xl font-bold rounded-lg transform hover:scale-105 transition-all duration-300 overflow-hidden"
+                      style={{
+                        backgroundColor: '#1a1a1a',
+                        color: '#FFD700',
+                        border: '2px solid #FFD700',
+                        boxShadow: '0 0 20px #FFD700, 0 0 35px #FFD700, inset 0 0 5px rgba(255, 215, 0, 0.3)',
+                        animation: 'pulseGold 2s infinite',
+                      }}
                     >
-                      Set Up Your Sprite
-                    </Link>
-                    <Link
-                      to="/factions"
-                      className={`px-6 py-3 rounded-xl text-lg font-medium transition-all duration-300 transform hover:scale-105
-                        ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
-                        backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
-                    >
-                      Choose Your Faction
-                    </Link>
+                      <div
+                        className="absolute inset-0 opacity-20"
+                        style={{
+                          background: 'linear-gradient(45deg, transparent, #FFD700, transparent)',
+                          backgroundSize: '200% 200%',
+                          animation: 'shimmerGold 3s linear infinite'
+                        }}
+                      />
+                      <div className="relative z-10 flex items-center gap-2">
+                        <span className="animate-pulse text-2xl" style={{ color: '#FFC800' }}>✨</span>
+                        <span className="tracking-wider" style={{ textShadow: '0 0 5px rgba(255, 215, 0, 0.5)' }}>Unlock Access Now</span>
+                        <span className="animate-pulse text-2xl" style={{ color: '#FFC800' }}>✨</span>
+                      </div>
+                      <div
+                        className="absolute inset-0 rounded-lg"
+                        style={{
+                          border: '1px solid rgba(255, 215, 0, 0.2)',
+                          animation: 'borderPulse 2s infinite',
+                        }}
+                      />
+                      <style>
+                        {`
+                          @keyframes shimmerGold {
+                            0% { background-position: -200% 0; }
+                            100% { background-position: 200% 0; }
+                          }
+                          @keyframes pulseGold {
+                            0%, 100% { box-shadow: 0 0 20px #FFD700, 0 0 35px #FFD700, inset 0 0 5px rgba(255, 215, 0, 0.3); }
+                            50% { box-shadow: 0 0 30px #FFD700, 0 0 45px #FFD700, inset 0 0 5px rgba(255, 215, 0, 0.4); }
+                          }
+                          @keyframes borderPulse {
+                            0%, 100% { opacity: 0.2; transform: scale(1); }
+                            50% { opacity: 0.4; transform: scale(1.02); }
+                          }
+                          button:hover {
+                            box-shadow: 0 0 35px #FFD700, 0 0 50px #FFD700, inset 0 0 5px rgba(255, 215, 0, 0.5);
+                          }
+                        `}
+                      </style>
+                    </button>
                   </div>
                 )}
+                {showPurchaseModal && (
+                  <PurchaseModal
+                    isOpen={showPurchaseModal}
+                    onClose={() => setShowPurchaseModal(false)}
+                    onPurchase={handlePurchase}
+                    contractName="Eternal Pass"
+                  />
+                )}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+                  <Link
+                    to="/customize"
+                    className={`px-6 py-3 rounded-xl text-lg font-medium transition-all duration-300 transform hover:scale-105
+                      ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
+                      backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
+                  >
+                    {isUnlocked ? 'Set Up Your Sprite' : 'View Sprite Creator'}
+                  </Link>
+                  <Link
+                    to="/factions"
+                    className={`px-6 py-3 rounded-xl text-lg font-medium transition-all duration-300 transform hover:scale-105
+                      ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
+                      backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
+                  >
+                    {isUnlocked ? 'Choose Your Faction' : 'View Factions'}
+                  </Link>
+                </div>
               </>
             ) : (
               <div className={`text-center ${theme.text} opacity-80`}>

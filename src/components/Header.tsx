@@ -19,25 +19,24 @@ const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate();
   const { wallet, walletStatus, connectWallet } = useWallet();
 
-  const isConnected = walletStatus?.isUnlocked === true;
-  const currentSkin = walletStatus?.currentSkin;
+  const isConnected = !!wallet;
   
   return (
-    <div className={`flex items-center justify-between px-4 py-4 ${theme.container} border-b ${theme.border} relative flex-shrink-0`}>
-      {/* Left side */}
-      {showBackButton && (
-        <div className="flex items-center">
+    <div className={`flex items-center px-4 py-4 ${theme.container} border-b ${theme.border} relative flex-shrink-0`}>
+      {/* Left side - either back button or empty div for spacing */}
+      <div className="flex-1 flex items-center">
+        {showBackButton && (
           <button
             onClick={() => navigate('/')}
             className={`px-6 py-3 ${theme.buttonBg} ${theme.buttonHover} ${theme.text} rounded-xl border ${theme.border} transition-all duration-300 hover:scale-105`}
           >
             ← Back to Main Page
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Center logo */}
-      <div className="absolute left-1/2 transform -translate-x-1/2">
+      <div className="flex-1 flex justify-center">
         <img 
           src={new URL('../assets/rune-realm-transparent.png', import.meta.url).href} 
           alt="Rune Realm Logo" 
@@ -46,15 +45,15 @@ const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-3">
+      <div className="flex-1 flex items-center justify-end gap-3">
         <button
           onClick={connectWallet}
           className={`px-6 py-3 ${theme.buttonBg} ${theme.buttonHover} ${theme.text} rounded-xl border ${theme.border} transition-all duration-300 hover:scale-105`}
         >
-          {isConnected ? (
-            <span>Connected {currentSkin ? '(Has Skin)' : ''}</span>
-          ) : (
+          {!isConnected ? (
             'Connect Wallet'
+          ) : (
+            <span>Connected {walletStatus?.isUnlocked ? '(Premium User)' : '(Basic User)'}</span>
           )}
         </button>
         <button

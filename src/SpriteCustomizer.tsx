@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import PreviewCanvas from './components/PreviewCanvas'
 import ExportButton from './components/ExportButton'
 import LayerSelector from './components/LayerSelector'
-import ExportAndUploadButton from './components/ExportAndUploadButton'
+import ExportAndUploadButton from './services/testupload'
 import WalkingPreview from './components/WalkingPreview'
 import FourDirectionView from './components/FourDirectionView'
 import WarpTransition from './components/WarpTransition'
@@ -12,16 +12,20 @@ import { SPRITE_CATEGORIES } from './constants/spriteAssets'
 import { ArconnectSigner } from '@ardrive/turbo-sdk/web'
 import logoPath from './assets/rune-realm-transparent.png'
 import { checkWalletStatus, TokenOption, purchaseAccess } from './utils/aoHelpers'
-import Confetti from 'react-confetti';
-import { TurboFactory } from '@ardrive/turbo-sdk/web';
-import { AdminSkinChanger } from './constants/spriteAssets';
-import { message, createDataItemSigner } from './config/aoConnection';
-import { AdminBulkUnlock } from './components/AdminBulkUnlock';
-import AdminRemoveUser from './components/AdminRemoveUser';
-import TestButton from './components/TestButton';
-import CacheDebugger from './components/CacheDebugger';
-import { Link, useNavigate } from 'react-router-dom';
-import Header from './components/Header';
+import Confetti from 'react-confetti'
+import { TurboFactory } from '@ardrive/turbo-sdk/web'
+import { AdminSkinChanger } from './constants/spriteAssets'
+import { AdminBulkImport } from './components/AdminBulkImport'
+import { AdminBulkUnlock } from './components/AdminBulkUnlock'
+import AdminRemoveUser from './components/AdminRemoveUser'
+import TestButton from './components/TestButton'
+import CacheDebugger from './components/CacheDebugger'
+import { Link, useNavigate } from 'react-router-dom'
+// Uncomment when deploying in Reality, comment out SimpleHeader import
+// import Header from './components/Header'
+// Comment out when deploying in Reality
+import SimpleHeader from './components/SimpleHeader'
+import Header from './components/Header'
 
 interface LayerState {
   style: string;
@@ -38,7 +42,6 @@ interface SpriteCustomizerProps {
 }
 
 const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) => {
-  const navigate = useNavigate();
   const [layers, setLayers] = useState<Layers>({});
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -388,11 +391,17 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Main container with gradient background */}
       <div className={`h-screen flex flex-col ${theme.bg}`}>
-        {/* Navigation Bar */}
-        <Header
+        {/* Uncomment when deploying in Reality, comment out SimpleHeader */}
+         <Header
           theme={theme}
           darkMode={darkMode}
           showBackButton={!onEnter}
+          onDarkModeToggle={handleDarkModeToggle}
+        />
+        {/* Comment out when deploying in Reality */}
+        {/*<SimpleHeader 
+          theme={theme}
+          darkMode={darkMode}
           onDarkModeToggle={handleDarkModeToggle}
         />
         {/* Main content area */}
@@ -432,6 +441,52 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Bottom Buttons */}
+          <div className={`flex gap-3 p-4 flex-shrink-0 ${theme.container} border-t ${theme.border}`}>
+            {onEnter && (
+              <button
+                onClick={handleSkipClick}
+                className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 
+                  ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
+                  backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
+              >
+                No Thanks, Just Log Me In
+              </button>
+            )}
+            <button
+              onClick={handleReset}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 
+                ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
+                backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
+            >
+              Reset All Layers
+            </button>
+            <button
+              onClick={handleRandomize}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 
+                ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
+                backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
+            >
+              Random Layers
+            </button>
+            <ExportAndUploadButton
+              id="export-upload-button"
+              layers={layers} 
+              darkMode={darkMode} 
+              mode="arweave"
+              signer={signer}
+              isUnlocked={isUnlocked}
+              onUploadStatusChange={setUploadStatus}
+              onError={setError}
+              onConnect={connectWallet}
+              onNeedUnlock={() => setIsPurchaseModalOpen(true)}
+              onUploadComplete={handleExportComplete}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-105 
+                ${theme.buttonBg} ${theme.buttonHover} ${theme.text} 
+                backdrop-blur-md shadow-lg hover:shadow-xl border ${theme.border}`}
+            />
           </div>
 
           {/* Footer */}

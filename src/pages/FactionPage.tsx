@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
-import { getFactionOptions, FactionOptions, setFaction } from '../utils/aoHelpers';
+import { getFactionOptions, FactionOptions, setFaction, purchaseAccess, TokenOption } from '../utils/aoHelpers';
 import { currentTheme } from '../constants/theme';
 import { Gateway } from '../constants/spriteAssets';
 import PurchaseModal from '../components/PurchaseModal';
 import Header from '../components/Header';
+import Confetti from 'react-confetti';
 
 const FactionPage: React.FC = () => {
   const { wallet, walletStatus, darkMode, connectWallet, setDarkMode } = useWallet();
@@ -13,6 +14,7 @@ const FactionPage: React.FC = () => {
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingFactions, setIsLoadingFactions] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
   const theme = currentTheme(darkMode);
 
   useEffect(() => {
@@ -44,45 +46,61 @@ const FactionPage: React.FC = () => {
     }
   };
 
-  const handlePurchaseComplete = () => {
-    setIsPurchaseModalOpen(false);
-    connectWallet();
-  };
-
-  const handleDarkModeToggle = () => {
-    setDarkMode(!darkMode);
+  const handlePurchase = async (selectedToken: TokenOption) => {
+    try {
+      await purchaseAccess(selectedToken);
+      setShowConfetti(true);
+      setIsPurchaseModalOpen(false);
+      setTimeout(() => {
+        setShowConfetti(false);
+        connectWallet();
+      }, 5000);
+    } catch (error) {
+      console.error('Purchase failed:', error);
+      throw error;
+    }
   };
 
   const currentFaction = factions.find(f => f.name === walletStatus?.faction);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <div className={`h-screen flex flex-col ${theme.bg}`}>
+    <div className="min-h-screen flex flex-col overflow-hidden">
+      <div className={`min-h-screen flex flex-col ${theme.bg}`}>
         <Header
           theme={theme}
           darkMode={darkMode}
           onDarkModeToggle={() => setDarkMode(!darkMode)}
         />
+        
+        {showConfetti && (
+          <Confetti
+            width={window.innerWidth}
+            height={window.innerHeight}
+            recycle={false}
+            numberOfPieces={500}
+            gravity={0.3}
+          />
+        )}
+
         <PurchaseModal
           isOpen={isPurchaseModalOpen}
           onClose={() => setIsPurchaseModalOpen(false)}
-          onPurchaseComplete={handlePurchaseComplete}
-          wallet={wallet}
-          darkMode={darkMode}
+          onPurchase={handlePurchase}
+          contractName="Eternal Pass"
         />
 
-        <div className={`container mx-auto px-6 py-8 ${theme.text}`}>
+        <div className={`container mx-auto px-6 py-8 flex-1 overflow-y-auto ${theme.text}`}>
           {/* Header Section */}
           <div className="max-w-6xl mx-auto mb-8">
             <h1 className={`text-3xl font-bold mb-4 ${theme.text}`}>Factions</h1>
             {walletStatus?.faction && currentFaction && (
-              <div className={`p-6 rounded-xl ${theme.container} border ${theme.border} mb-8 backdrop-blur-md`}>
-                <div className="flex items-center gap-6">
+              <div className={`p-4 rounded-xl ${theme.container} border ${theme.border} mb-8 backdrop-blur-md`}>
+                <div className="flex items-center gap-4">
                   {currentFaction.mascot && (
                     <img 
                       src={`${Gateway}${currentFaction.mascot}`}
                       alt={`${currentFaction.name} Mascot`}
-                      className="w-32 h-32 object-cover rounded-lg"
+                      className="w-24 h-24 object-cover rounded-lg"
                     />
                   )}
                   <div>
@@ -99,78 +117,68 @@ const FactionPage: React.FC = () => {
             )}
           </div>
 
-          {/* Main Content */}
-          <div className="max-w-6xl mx-auto">
-            {isLoadingFactions ? (
-              <div className={`p-6 rounded-xl ${theme.container} border ${theme.border} mb-8 backdrop-blur-md`}>
-                <p className={`${theme.text}`}>Loading factions...</p>
-              </div>
-            ) : !walletStatus?.isUnlocked ? (
-              <div className={`p-6 rounded-xl ${theme.container} border ${theme.border} mb-8 backdrop-blur-md`}>
-                <h2 className={`text-xl font-bold mb-4 ${theme.text}`}>Unlock Required</h2>
-                <p className={`mb-4 ${theme.text}`}>You need an Eternal Pass to join a faction.</p>
-                <button
-                  onClick={() => setIsPurchaseModalOpen(true)}
-                  className={`px-4 py-2 rounded-lg ${theme.buttonBg} ${theme.buttonHover} ${theme.text}`}
-                >
-                  Get Eternal Pass
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {factions.map((faction, index) => (
-                  <div
-                    key={index}
-                    className={`p-6 rounded-xl ${theme.container} border ${theme.border} backdrop-blur-md 
-                      transition-all duration-300 hover:shadow-lg
-                      ${walletStatus?.faction ? 'opacity-75 hover:opacity-100' : ''} 
-                      ${walletStatus?.faction === faction.name ? 'ring-2 ring-blue-500' : ''}`}
-                  >
-                    <div className="flex gap-6 mb-4">
-                      {faction.mascot && (
-                        <img 
-                          src={`${Gateway}${faction.mascot}`}
-                          alt={`${faction.name} Mascot`}
-                          className="w-32 h-32 object-cover rounded-lg"
-                        />
-                      )}
-                      <div>
-                        <h3 className={`text-2xl font-bold mb-2 ${theme.text}`}>{faction.name}</h3>
-                        <p className={`${theme.text} text-sm`}>{faction.description}</p>
-                      </div>
+          {/* Factions Grid */}
+          <div 
+            className={`grid gap-3 max-w-5xl mx-auto ${
+              factions.length <= 3 
+                ? 'grid-cols-1 md:grid-cols-3' 
+                : factions.length === 4 
+                ? 'grid-cols-1 md:grid-cols-2' 
+                : 'grid-cols-1'
+            }`}
+          >
+            {factions.map((faction) => (
+              <div
+                key={faction.name}
+                className={`flex flex-col h-full p-2.5 rounded-xl ${theme.container} border ${theme.border} backdrop-blur-md transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl min-h-[560px]`}
+              >
+                <div className="relative rounded-lg overflow-hidden bg-black/5">
+                  {faction.mascot && (
+                    <img
+                      src={`${Gateway}${faction.mascot}`}
+                      alt={`${faction.name} Mascot`}
+                      className="w-full h-[360px] object-contain hover:scale-105 transition-transform duration-500"
+                    />
+                  )}
+                </div>
+                <div className="flex-grow mt-2.5 px-1.5">
+                  <h3 className={`text-xl font-bold mb-2 ${theme.text}`}>{faction.name}</h3>
+                  {faction.perks && (
+                    <ul className="space-y-1.5">
+                      {faction.perks.map((perk, index) => (
+                        <li key={index} className={`text-sm ${theme.text} opacity-80 flex items-start leading-tight`}>
+                          <span className="mr-1.5 text-blue-400 flex-shrink-0">•</span>
+                          <span>{perk}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="mt-2.5 px-1.5">
+                  {!walletStatus?.isUnlocked ? (
+                    <button
+                      onClick={() => setIsPurchaseModalOpen(true)}
+                      className={`w-full px-3 py-1.5 rounded-lg font-bold transition-all duration-300 ${theme.buttonBg} ${theme.buttonHover} ${theme.text}`}
+                    >
+                      Unlock Access
+                    </button>
+                  ) : !walletStatus?.faction && (
+                    <button
+                      onClick={() => handleJoinFaction(faction.name)}
+                      disabled={isLoading}
+                      className={`w-full px-3 py-1.5 rounded-lg font-bold transition-all duration-300 ${theme.buttonBg} ${theme.buttonHover} hover:scale-105 ${theme.text}`}
+                    >
+                      {isLoading ? 'Joining...' : 'Join Faction'}
+                    </button>
+                  )}
+                  {walletStatus?.faction === faction.name && (
+                    <div className={`text-center py-1.5 font-bold ${theme.text} opacity-75`}>
+                      Current Faction
                     </div>
-
-                    {faction.perks && faction.perks.length > 0 && (
-                      <div className={`mt-4 p-4 rounded-lg bg-opacity-10 ${theme.bg} backdrop-blur-sm`}>
-                        <h4 className={`text-lg font-semibold mb-2 ${theme.text}`}>Faction Perks</h4>
-                        <ul className="space-y-2">
-                          {faction.perks.map((perk, perkIndex) => (
-                            <li 
-                              key={perkIndex}
-                              className={`flex items-center gap-2 ${theme.text}`}
-                            >
-                              <span className="text-blue-500">•</span>
-                              <span className="text-sm">{perk}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {!walletStatus?.faction && (
-                      <button
-                        onClick={() => handleJoinFaction(faction.name)}
-                        disabled={isLoading}
-                        className={`mt-4 w-full px-4 py-2 rounded-lg ${theme.buttonBg} ${theme.buttonHover} ${theme.text}
-                          ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {isLoading ? 'Joining...' : 'Join Faction'}
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
       </div>

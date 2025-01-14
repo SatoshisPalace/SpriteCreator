@@ -15,21 +15,21 @@ BaseSpriteHitbox = {width=38,height=48,offsetX=1,offsetY=22}
 PurchaseTokens = {
   {
     token = 'wOrb8b_V8QixWyXZub48Ki5B6OIDyf_p1ngoonsaRpQ',  -- TRUNK token
-    amount = "1984",
+    amount = "2500",
     name = "TRUNK",
     icon="hqg-Em9DdYHYmMysyVi8LuTGF8IF_F7ZacgjYiSpj0k",
     denomination = 3  
 },
   {
     token = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-    amount = "198400000000",
+    amount = "1984000000000",
     name = "wAR",
     icon="L99jaxRKQKJt9CqoJtPaieGPEhJD3wNhR4iGqc8amXs",
     denomination = 12 
   },
   {
     token = 'OsK9Vgjxo0ypX_HLz2iJJuh4hp3I80yA9KArsJjIloU',
-    amount = "10000000000",
+    amount = "15000000000",
     name = "NAB" ,
     icon="LQ4crOHN9qO6JsLNs253AaTch6MgAMbM8PKqBxs4hgI",
     denomination = 8 
@@ -41,7 +41,7 @@ AvailableFactions = {
     {
         name = "Sky Nomads",
         description = "Masters of the skies, the Sky Nomads harness the power of wind and air to outmaneuver and outlast their opponents.",
-        mascot = "Q3WBqUepXj0AQBIMAgUGwsMSKmt83JNeHAz7223Atlw",
+        mascot = "XD4tSBeekM1ETZMflAANDfkW6pVWaQIXgSdSiwfwVqw",
         perks = {
             "Increased critical hit chance with wind-based attacks",
             "Reduced cooldown on special abilities",
