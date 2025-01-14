@@ -418,6 +418,7 @@ export const bulkImportAddresses = async (data: BulkImportRequest): Promise<Bulk
             data: JSON.stringify(data),
             signer
         });
+        console.log(response);
 
         if (!response.data) {
             throw new Error("No response data received");

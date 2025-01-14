@@ -529,6 +529,12 @@ const SpriteCustomizer: React.FC<SpriteCustomizerProps> = ({ wallet, onEnter }) 
               </a>
             </div>
           </div>
+
+          {/* Admin Tools - Comment out when not needed */}
+          {/* <div className={`flex flex-col gap-4 p-4 ${theme.container} border-t ${theme.border}`}>
+            <AdminBulkUnlock />
+            <AdminRemoveUser />
+          </div> */}
         </div>
 
         {showCelebration && (
